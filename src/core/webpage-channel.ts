@@ -1,11 +1,18 @@
-import type { IChannelData, IErrorEvent, IMessageErrorEvent, IWebpageChannelAdapter } from '../types';
+import type {
+  IChannelData,
+  IErrorEvent,
+  IMessageErrorEvent,
+  IWebpageChannelAdapter
+} from '../types';
 
 import BroadcastChannelAdapter from './broadcast-channel-adapter';
 
-export default class WebpageChannel<T extends Record<string | symbol, (args: any) => void>> {
+export default class WebpageChannel<
+  T extends Record<string, (args: any) => void>
+> {
   private adapter: IWebpageChannelAdapter | null;
   private listeners: Record<keyof T, ((args: any) => void)[]> = {} as any;
-  
+
   onError?: IErrorEvent;
   onMessageError?: IMessageErrorEvent;
   serializeMessage: (
@@ -88,6 +95,12 @@ export default class WebpageChannel<T extends Record<string | symbol, (args: any
   }
 
   private postMessage(data: IChannelData<Parameters<T[keyof T]>, keyof T>) {
+    if (!this.adapter) {
+      const error = new Error('Adapter is not initialized');
+      this.onError && this.onError(error);
+      return false;
+    }
+
     try {
       const message = this.serializeMessage(data);
       this.adapter?.postMessage(message);
@@ -114,7 +127,14 @@ export default class WebpageChannel<T extends Record<string | symbol, (args: any
         }
 
         callbacks.forEach((callback) => {
-          callback(res.data);
+          try {
+            callback(res.data);
+          } catch (e: any) {
+            if (!(e instanceof Error)) {
+              e = new Error(e);
+            }
+            this.onError && this.onError(e);
+          }
         });
       } catch (e: any) {
         if (!(e instanceof Error)) {

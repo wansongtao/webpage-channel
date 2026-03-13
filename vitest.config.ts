@@ -4,6 +4,9 @@ export default defineConfig({
   test: {
     environment: 'happy-dom', // 关键：模拟浏览器环境
     globals: true,
-    include: ['src/**/*.{test,spec}.{ts,js}']
+    include: [
+      'src/**/*.{test,spec}.{ts,js}',
+      'test/**/*.{test,spec}.{ts,js}'
+    ]
   }
 });

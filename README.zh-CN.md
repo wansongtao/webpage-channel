@@ -101,6 +101,7 @@ channel.close(); // 清空监听并关闭底层通道
 
 - `true`：序列化与发送成功。
 - `false`：发送过程抛错（同时触发 `onError`）。
+- `false`：在调用 `close()` 之后再调用 `emit` 也会返回 `false`（同时触发 `onError`）。
 
 ### `channel.off(event, listener?)`
 
@@ -167,8 +168,8 @@ channel.on('auth:token', (payload) => {
 注意事项：
 
 - 生产环境请避免使用 `*` 作为 `targetOrigin`。
-- `PostMessageAdapter` 内部按 `e.origin === targetOrigin` 过滤消息来源。
-- 父子页面应使用相同的频道名与事件定义，避免协议不一致。
+- `PostMessageAdapter` 内部会同时校验 `e.origin === targetOrigin` 和 `e.source === targetWindow`。
+- 父子页面建议保持一致的事件名与数据结构定义。
 
 ### 自定义适配器示例
 
@@ -226,6 +227,14 @@ const channel = new WebpageChannel<Events>('secure-channel', {
 - 避免传输超大对象，尽量传必要字段。
 - 跨来源通信时请在适配器内严格校验 `origin`。
 - 在页面卸载或模块销毁时调用 `close()` 释放资源。
+
+## 测试
+
+```bash
+pnpm vitest run
+```
+
+当前单元测试主要位于 `test/core` 目录。
 
 ## 许可证
 

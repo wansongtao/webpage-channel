@@ -101,6 +101,7 @@ Emits an event and returns send status:
 
 - `true`: message serialized and sent successfully.
 - `false`: sending failed with an exception (and `onError` is called).
+- `false`: calling `emit` after `close()` also returns `false` (and `onError` is called).
 
 ### `channel.off(event, listener?)`
 
@@ -167,8 +168,8 @@ channel.on('auth:token', (payload) => {
 Notes:
 
 - Avoid using `*` as `targetOrigin` in production.
-- `PostMessageAdapter` filters incoming messages with `e.origin === targetOrigin`.
-- Parent and child should use the same channel name and event contract.
+- `PostMessageAdapter` validates both `e.origin === targetOrigin` and `e.source === targetWindow`.
+- Parent and child should keep the same event names and payload contract.
 
 ### Custom Adapter Example
 
@@ -226,6 +227,14 @@ const channel = new WebpageChannel<Events>('secure-channel', {
 - Avoid sending very large objects; send only required fields.
 - For cross-origin communication, strictly validate `origin` in your adapter logic.
 - Call `close()` when a page/module is disposed.
+
+## Testing
+
+```bash
+pnpm vitest run
+```
+
+Current unit tests are organized under `test/core`.
 
 ## License
 

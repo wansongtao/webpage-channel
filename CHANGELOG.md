@@ -1,0 +1,39 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on Keep a Changelog, and this project follows Semantic Versioning.
+
+## [Unreleased]
+
+### Added
+
+- Added unit tests for `PostMessageAdapter` under `test/core/postmessage-adapter.spec.ts`.
+- Added unit tests for `WebpageChannel` under `test/core/webpage-channel.spec.ts`.
+- Added a `Testing` section to both `README.md` and `README.zh-CN.md`.
+
+### Changed
+
+- Expanded test discovery in `vitest.config.ts` to include both `src/**/*.{test,spec}.{ts,js}` and `test/**/*.{test,spec}.{ts,js}`.
+- Improved `WebpageChannel` event callback isolation so one listener throwing does not block other listeners.
+- Updated `WebpageChannel` to use string event keys in generic constraints.
+
+### Fixed
+
+- Fixed `PostMessageAdapter` listener cleanup logic by storing and removing exact handler references in `close()`.
+- Hardened `PostMessageAdapter` message filtering with both origin and source checks.
+- Fixed `WebpageChannel.emit()` behavior after `close()` to return `false` and trigger `onError`.
+
+### Documentation
+
+- Synchronized and expanded Chinese and English READMEs.
+- Added detailed `PostMessageAdapter` usage examples for parent/iframe communication.
+- Corrected README behavior notes to match implementation details.
+
+## [1.0.0] - 2026-03-13
+
+### Added
+
+- Initial public release of `webpage-channel`.
+- Core channel abstraction with adapter-based transport.
+- Built-in `BroadcastChannelAdapter` and `PostMessageAdapter`.

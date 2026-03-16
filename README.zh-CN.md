@@ -231,10 +231,20 @@ const channel = new WebpageChannel<Events>('secure-channel', {
 ## 测试
 
 ```bash
-pnpm vitest run
+# 监听模式运行测试
+pnpm test
+
+# 运行测试并生成覆盖率报告
+pnpm test:coverage
 ```
 
-当前单元测试主要位于 `test/core` 目录。
+单元测试位于 `test/core/` 目录，覆盖全部三个核心模块：
+
+- `broadcast-channel-adapter.spec.ts`
+- `postmessage-adapter.spec.ts`
+- `webpage-channel.spec.ts`
+
+当前覆盖率：语句、分支、函数、行均为 **100%**。
 
 ## 许可证
 

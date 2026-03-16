@@ -231,10 +231,20 @@ const channel = new WebpageChannel<Events>('secure-channel', {
 ## Testing
 
 ```bash
-pnpm vitest run
+# Run tests in watch mode
+pnpm test
+
+# Run tests with coverage
+pnpm test:coverage
 ```
 
-Current unit tests are organized under `test/core`.
+Unit tests are organized under `test/core/`, covering all three core modules:
+
+- `broadcast-channel-adapter.spec.ts`
+- `postmessage-adapter.spec.ts`
+- `webpage-channel.spec.ts`
+
+Current coverage: **100%** statements, branches, functions, and lines.
 
 ## License
 

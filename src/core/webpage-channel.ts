@@ -12,6 +12,7 @@ export default class WebpageChannel<
 > {
   private adapter: IWebpageChannelAdapter | null;
   private listeners: Record<keyof T, ((args: any) => void)[]> = {} as any;
+  private channelName: string;
 
   onError?: IErrorEvent;
   onMessageError?: IMessageErrorEvent;
@@ -36,6 +37,7 @@ export default class WebpageChannel<
     },
     adapter?: IWebpageChannelAdapter
   ) {
+    this.channelName = channelName;
     this.adapter = adapter ?? new BroadcastChannelAdapter(channelName);
     this.onMessage();
 
@@ -59,7 +61,9 @@ export default class WebpageChannel<
   }
 
   emit<K extends keyof T>(event: K, args: Parameters<T[K]>[0]) {
+    const channelName = this.channelName;
     const msg: IChannelData<Parameters<T[K]>, K> = {
+      channelName,
       event,
       data: args
     };
@@ -117,32 +121,42 @@ export default class WebpageChannel<
 
   private onMessage() {
     this.adapter?.onMessage((message) => {
+      let res: IChannelData<Parameters<T[keyof T]>, keyof T>;
       try {
-        const res = this.deserializeMessage(message);
-        const key = res.event;
-        if (key === undefined || key === null) return;
-        const callbacks = this.listeners[key];
-        if (!callbacks || !callbacks.length) {
-          return;
-        }
-
-        callbacks.forEach((callback) => {
-          try {
-            callback(res.data);
-          } catch (e: any) {
-            if (!(e instanceof Error)) {
-              e = new Error(e);
-            }
-            this.onError && this.onError(e);
-          }
-        });
+        res = this.deserializeMessage(message);
       } catch (e: any) {
         if (!(e instanceof Error)) {
           e = new Error(e);
         }
 
         this.onError && this.onError(e);
+        return;
       }
+
+      const key = res.event;
+      if (
+        res.channelName !== this.channelName ||
+        key === undefined ||
+        key === null
+      ) {
+        return;
+      }
+
+      const callbacks = this.listeners[key];
+      if (!callbacks || !callbacks.length) {
+        return;
+      }
+
+      callbacks.forEach((callback) => {
+        try {
+          callback(res.data);
+        } catch (e: any) {
+          if (!(e instanceof Error)) {
+            e = new Error(e);
+          }
+          this.onError && this.onError(e);
+        }
+      });
     });
   }
 }

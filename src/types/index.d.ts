@@ -6,6 +6,7 @@ export interface IWebpageChannelAdapter {
 }
 
 export interface IChannelData<T = any, C = string> {
+  channelName: string
   event?: C;
   data?: T;
 }

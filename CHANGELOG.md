@@ -6,17 +6,21 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-03-16
+
 ### Added
 
+- Added `channelName` field to `IChannelData` for improved message routing and filtering.
+- Added unit tests for `BroadcastChannelAdapter` under `test/core/broadcast-channel-adapter.spec.ts`.
 - Added unit tests for `PostMessageAdapter` under `test/core/postmessage-adapter.spec.ts`.
 - Added unit tests for `WebpageChannel` under `test/core/webpage-channel.spec.ts`.
-- Added a `Testing` section to both `README.md` and `README.zh-CN.md`.
+- Achieved **100%** test coverage across statements, branches, functions, and lines.
 
 ### Changed
 
+- Updated `WebpageChannel` to include `channelName` in outgoing messages and validate it on incoming messages.
 - Expanded test discovery in `vitest.config.ts` to include both `src/**/*.{test,spec}.{ts,js}` and `test/**/*.{test,spec}.{ts,js}`.
 - Improved `WebpageChannel` event callback isolation so one listener throwing does not block other listeners.
-- Updated `WebpageChannel` to use string event keys in generic constraints.
 
 ### Fixed
 
@@ -26,9 +30,9 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ### Documentation
 
-- Synchronized and expanded Chinese and English READMEs.
+- Updated testing section in both `README.md` and `README.zh-CN.md` with coverage details and available test commands.
 - Added detailed `PostMessageAdapter` usage examples for parent/iframe communication.
-- Corrected README behavior notes to match implementation details.
+- Synchronized and expanded Chinese and English READMEs.
 
 ## [1.0.0] - 2026-03-13
 

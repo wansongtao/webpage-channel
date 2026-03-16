@@ -3,6 +3,16 @@ import { describe, expect, it, vi } from 'vitest';
 import PostMessageAdapter from '../../src/core/postmessage-adapter';
 
 describe('PostMessageAdapter', () => {
+  it('should call targetWindow.postMessage with message and targetOrigin', () => {
+    const mockWindow = { postMessage: vi.fn() } as unknown as Window;
+    const adapter = new PostMessageAdapter(mockWindow, 'https://target.test');
+
+    adapter.postMessage('hello');
+
+    expect(mockWindow.postMessage).toHaveBeenCalledWith('hello', 'https://target.test');
+    adapter.close();
+  });
+
   it('should dispatch message only when origin and source match', () => {
     const callback = vi.fn();
     const adapter = new PostMessageAdapter(window, 'https://allowed.test');
@@ -52,6 +62,34 @@ describe('PostMessageAdapter', () => {
     removeSpy.mockRestore();
   });
 
+  it('should remove previous messageerror listener when onMessageError is called again', () => {
+    const removeSpy = vi.spyOn(window, 'removeEventListener');
+    const adapter = new PostMessageAdapter(window, 'https://allowed.test');
+
+    adapter.onMessageError(() => {});
+    adapter.onMessageError(() => {});
+
+    expect(removeSpy).toHaveBeenCalledWith('messageerror', expect.any(Function));
+
+    adapter.close();
+    removeSpy.mockRestore();
+  });
+
+  it('should invoke messageerror callback when messageerror event fires', () => {
+    const onMessageError = vi.fn();
+    const adapter = new PostMessageAdapter(window, 'https://allowed.test');
+
+    adapter.onMessageError(onMessageError);
+
+    const event = new MessageEvent('messageerror');
+    window.dispatchEvent(event);
+
+    expect(onMessageError).toHaveBeenCalledTimes(1);
+    expect(onMessageError).toHaveBeenCalledWith(event);
+
+    adapter.close();
+  });
+
   it('should clean up message and messageerror listeners on close', () => {
     const onMessage = vi.fn();
     const onMessageError = vi.fn();
@@ -72,5 +110,11 @@ describe('PostMessageAdapter', () => {
 
     expect(onMessage).not.toHaveBeenCalled();
     expect(onMessageError).not.toHaveBeenCalled();
+  });
+
+  it('should do nothing on close when no handlers were registered', () => {
+    const adapter = new PostMessageAdapter(window, 'https://allowed.test');
+    // Should not throw
+    expect(() => adapter.close()).not.toThrow();
   });
 });

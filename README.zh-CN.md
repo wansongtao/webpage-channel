@@ -8,7 +8,7 @@
 
 ## 特性
 
-- 轻量易用：`on`、`emit`、`off` 即可完成事件收发。
+- 轻量易用：`on`、`once`、`emit`、`off` 即可完成事件收发。
 - TypeScript 友好：通过泛型约束事件名和事件数据类型。
 - 可扩展适配器：默认 `BroadcastChannel`，可自定义适配器。
 - 可自定义序列化：支持替换 `JSON.stringify/parse`。
@@ -64,6 +64,9 @@ const onToast = (payload: { message: string; type: 'success' | 'error' }) => {
 };
 
 channel.on('toast:show', onToast);
+channel.once('toast:show', (payload) => {
+	console.log('仅触发一次:', payload.message);
+});
 channel.off('toast:show', onToast); // 移除指定监听器
 channel.off('toast:show'); // 移除该事件全部监听器
 
@@ -94,6 +97,10 @@ channel.close(); // 清空监听并关闭底层通道
 ### `channel.on(event, callback)`
 
 注册事件监听。
+
+### `channel.once(event, callback)`
+
+注册一次性监听器，首次触发后会自动移除。
 
 ### `channel.emit(event, payload): boolean`
 
@@ -226,6 +233,8 @@ const channel = new WebpageChannel<Events>('secure-channel', {
 - 事件名保持稳定且语义化，推荐使用 `模块:动作` 命名。
 - 避免传输超大对象，尽量传必要字段。
 - 跨来源通信时请在适配器内严格校验 `origin`。
+- 作为跨系统或跨上下文协议时，事件名和消息字段建议使用 `string`，不要使用 `Symbol`。
+- `Symbol` 适合内部运行时标记（例如仅在内存中使用的监听器元信息），但不应进入传输消息。
 - 在页面卸载或模块销毁时调用 `close()` 释放资源。
 
 ## 测试

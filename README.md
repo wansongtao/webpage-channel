@@ -8,7 +8,7 @@ It provides a unified event API for communication across web contexts such as ta
 
 ## Features
 
-- Lightweight API: communicate with just `on`, `emit`, and `off`.
+- Lightweight API: communicate with just `on`, `once`, `emit`, and `off`.
 - TypeScript-friendly: strongly typed event names and payloads via generics.
 - Adapter extensibility: uses `BroadcastChannel` by default, supports custom adapters.
 - Custom serialization: replace `JSON.stringify/parse` when needed.
@@ -64,6 +64,9 @@ const onToast = (payload: { message: string; type: 'success' | 'error' }) => {
 };
 
 channel.on('toast:show', onToast);
+channel.once('toast:show', (payload) => {
+	console.log('Only once:', payload.message);
+});
 channel.off('toast:show', onToast); // remove a specific listener
 channel.off('toast:show'); // remove all listeners of this event
 
@@ -94,6 +97,10 @@ Creates a channel instance.
 ### `channel.on(event, callback)`
 
 Registers an event listener.
+
+### `channel.once(event, callback)`
+
+Registers a one-time listener that is automatically removed after the first call.
 
 ### `channel.emit(event, payload): boolean`
 
@@ -226,6 +233,8 @@ const channel = new WebpageChannel<Events>('secure-channel', {
 - Keep event names stable and semantic; `module:action` naming works well.
 - Avoid sending very large objects; send only required fields.
 - For cross-origin communication, strictly validate `origin` in your adapter logic.
+- For cross-system or cross-context contracts, use `string` event names and payload fields, not `Symbol` values.
+- Using `Symbol` for internal runtime markers is fine (for example, listener metadata that never crosses the transport boundary).
 - Call `close()` when a page/module is disposed.
 
 ## Testing

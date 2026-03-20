@@ -205,6 +205,30 @@ describe('WebpageChannel', () => {
     channel.close();
   });
 
+  it('should call once listener only once for incoming messages', () => {
+    const adapter = new MockAdapter();
+    const channel = new WebpageChannel<TestEvents>(
+      'test-channel',
+      undefined,
+      adapter
+    );
+
+    const listener = vi.fn();
+    channel.once('ping', listener);
+
+    adapter.emitIncoming(
+      JSON.stringify({ channelName: 'test-channel', event: 'ping', data: { value: 11 } })
+    );
+    adapter.emitIncoming(
+      JSON.stringify({ channelName: 'test-channel', event: 'ping', data: { value: 12 } })
+    );
+
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(listener).toHaveBeenCalledWith({ value: 11 });
+
+    channel.close();
+  });
+
   it('should ignore incoming message with mismatched channelName', () => {
     const adapter = new MockAdapter();
     const channel = new WebpageChannel<TestEvents>(

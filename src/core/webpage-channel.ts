@@ -6,13 +6,14 @@ import type {
 } from '../types';
 
 import BroadcastChannelAdapter from './broadcast-channel-adapter';
+import EventBus from './event-bus';
 
 export default class WebpageChannel<
   T extends Record<string, (args: any) => void>
 > {
-  private adapter: IWebpageChannelAdapter | null;
-  private listeners: Record<keyof T, ((args: any) => void)[]> = {} as any;
   private channelName: string;
+  private eventBus: EventBus<T>;
+  private adapter: IWebpageChannelAdapter | null;
 
   onError?: IErrorEvent;
   onMessageError?: IMessageErrorEvent;
@@ -38,6 +39,11 @@ export default class WebpageChannel<
     adapter?: IWebpageChannelAdapter
   ) {
     this.channelName = channelName;
+    this.eventBus = new EventBus<T>({
+      onListenerError: (error) => {
+        this.onError?.(error);
+      }
+    });
     this.adapter = adapter ?? new BroadcastChannelAdapter(channelName);
     this.onMessage();
 
@@ -54,10 +60,11 @@ export default class WebpageChannel<
   }
 
   on<K extends keyof T>(event: K, callback: T[K]) {
-    if (!this.listeners[event]) {
-      this.listeners[event] = [];
-    }
-    this.listeners[event].push(callback);
+    this.eventBus.on(event, callback);
+  }
+
+  once<K extends keyof T>(event: K, callback: T[K]) {
+    this.eventBus.once(event, callback);
   }
 
   emit<K extends keyof T>(event: K, args: Parameters<T[K]>[0]) {
@@ -72,24 +79,11 @@ export default class WebpageChannel<
   }
 
   off<K extends keyof T>(event: K, listener?: T[K]) {
-    if (!listener) {
-      delete this.listeners[event];
-      return;
-    }
-
-    const fns = this.listeners[event];
-    if (!fns || !fns.length) {
-      return;
-    }
-
-    const idx = fns.indexOf(listener);
-    if (idx !== -1) {
-      fns.splice(idx, 1);
-    }
+    this.eventBus.off(event, listener);
   }
 
   clear() {
-    this.listeners = {} as any;
+    this.eventBus.clear();
   }
 
   close() {
@@ -142,21 +136,7 @@ export default class WebpageChannel<
         return;
       }
 
-      const callbacks = this.listeners[key];
-      if (!callbacks || !callbacks.length) {
-        return;
-      }
-
-      callbacks.forEach((callback) => {
-        try {
-          callback(res.data);
-        } catch (e: any) {
-          if (!(e instanceof Error)) {
-            e = new Error(e);
-          }
-          this.onError && this.onError(e);
-        }
-      });
+      this.eventBus.emit(key, res.data);
     });
   }
 }

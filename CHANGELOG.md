@@ -6,6 +6,21 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-03-20
+
+### Added
+
+- Added `once(event, callback)` support to `EventBus` and `WebpageChannel` for one-time listeners.
+
+### Changed
+
+- Improved `EventBus.emit()` iteration safety by dispatching on a snapshot to avoid mutation side effects during listener removal.
+- Updated listener removal logic to support removing original callbacks registered via `once`.
+
+### Documentation
+
+- Updated `README.md` and `README.zh-CN.md` with `once` API usage and best-practice guidance for `Symbol` in cross-system messaging.
+
 ## [1.0.1] - 2026-03-16
 
 ### Added

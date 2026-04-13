@@ -67,7 +67,12 @@ export default class WebpageChannel<
     this.eventBus.once(event, callback);
   }
 
-  emit<K extends keyof T>(event: K, args: Parameters<T[K]>[0]) {
+  emit<K extends keyof T>(
+    event: K,
+    ...[args]: Parameters<T[K]>[0] extends undefined
+      ? []
+      : [Parameters<T[K]>[0]]
+  ) {
     const channelName = this.channelName;
     const msg: IChannelData<Parameters<T[K]>, K> = {
       channelName,
@@ -136,6 +141,7 @@ export default class WebpageChannel<
         return;
       }
 
+      // @ts-ignore
       this.eventBus.emit(key, res.data);
     });
   }

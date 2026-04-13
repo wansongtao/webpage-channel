@@ -31,7 +31,12 @@ export default class EventBus<T extends EventMap> {
     this.on(event, onceCallback as T[K]);
   }
 
-  emit<K extends keyof T>(event: K, args: Parameters<T[K]>[0]) {
+  emit<K extends keyof T>(
+    event: K,
+    ...[args]: Parameters<T[K]>[0] extends undefined
+      ? []
+      : [Parameters<T[K]>[0]]
+  ) {
     const callbacks = this.listeners[event];
     if (!callbacks?.length) {
       return;

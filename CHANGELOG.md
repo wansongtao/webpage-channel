@@ -6,6 +6,29 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-04-21
+
+### Added
+
+- Added `LocalStorageAdapter` as a built-in fallback adapter for environments where `BroadcastChannel` is unavailable, based on `localStorage` + `storage` events.
+- Added `isSupportLocalStorage()` and `isSupportPostMessage()` utility functions to `src/utils/index.ts`.
+- `WebpageChannel` now automatically selects an adapter in priority order: `BroadcastChannel` → `localStorage` → throws an error.
+- Added environment availability checks (`isSupportBroadcastChannel`, `isSupportLocalStorage`, `isSupportPostMessage`) to all three built-in adapters' constructors, providing clear error messages when used in unsupported environments.
+- Added unit tests for `LocalStorageAdapter` under `test/core/localstorage-adapter.spec.ts` with 100% coverage.
+- Added `LocalStorageAdapter` fallback tests to `test/core/webpage-channel.spec.ts`.
+- Added environment check tests to `test/core/broadcast-channel-adapter.spec.ts` and `test/core/postmessage-adapter.spec.ts`.
+- Exported `LocalStorageAdapter` from the package entry point.
+
+### Changed
+
+- `WebpageChannel` constructor no longer performs a redundant `isSupportBroadcastChannel` check; environment detection is now delegated to each adapter's constructor.
+- Error normalization in `WebpageChannel` (`postMessage` and `onMessage`) changed from `catch (e: any)` to `catch (e: unknown)` with `e instanceof Error` guard, consistent with `EventBus`.
+- `this.onError && this.onError(e)` calls simplified to `this.onError?.(e)` throughout `WebpageChannel`.
+
+### Documentation
+
+- Updated `README.md` and `README.zh-CN.md` to document `LocalStorageAdapter`, automatic fallback behavior, notes on same-tab messaging, and updated test module list.
+
 ## [1.0.2] - 2026-03-20
 
 ### Added

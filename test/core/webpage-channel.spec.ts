@@ -1,5 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import * as utils from '../../src/utils';
 import WebpageChannel from '../../src/core/webpage-channel';
 import type { IWebpageChannelAdapter } from '../../src/types';
 
@@ -40,6 +41,43 @@ describe('WebpageChannel', () => {
     // Should not throw, uses BroadcastChannelAdapter internally
     expect(channel).toBeDefined();
     channel.close();
+  });
+
+  describe('adapter auto-selection fallback', () => {
+    beforeEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('should fall back to LocalStorageAdapter when BroadcastChannel is not supported', () => {
+      vi.spyOn(utils, 'isSupportBroadcastChannel').mockReturnValue(false);
+      vi.spyOn(utils, 'isSupportLocalStorage').mockReturnValue(true);
+
+      const channel = new WebpageChannel<TestEvents>('fallback-channel');
+      expect(channel).toBeDefined();
+      channel.close();
+    });
+
+    it('should throw when neither BroadcastChannel nor localStorage is supported', () => {
+      vi.spyOn(utils, 'isSupportBroadcastChannel').mockReturnValue(false);
+      vi.spyOn(utils, 'isSupportLocalStorage').mockReturnValue(false);
+
+      expect(() => new WebpageChannel<TestEvents>('no-support-channel')).toThrow(
+        'Neither BroadcastChannel nor localStorage is supported in this environment.'
+      );
+    });
+
+    it('should use provided adapter without checking environment support', () => {
+      vi.spyOn(utils, 'isSupportBroadcastChannel').mockReturnValue(false);
+      vi.spyOn(utils, 'isSupportLocalStorage').mockReturnValue(false);
+
+      const adapter = new MockAdapter();
+      // Passing explicit adapter should skip env checks entirely
+      expect(() => new WebpageChannel<TestEvents>('custom-adapter-channel', undefined, adapter)).not.toThrow();
+    });
   });
 
   it('should use custom serializeMessage and deserializeMessage', () => {

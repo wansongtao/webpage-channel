@@ -1,8 +1,24 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import * as utils from '../../src/utils';
 import BroadcastChannelAdapter from '../../src/core/broadcast-channel-adapter';
 
 describe('BroadcastChannelAdapter', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('should throw if BroadcastChannel is not supported', () => {
+    vi.spyOn(utils, 'isSupportBroadcastChannel').mockReturnValue(false);
+
+    expect(() => new BroadcastChannelAdapter('test-bc')).toThrow(
+      'BroadcastChannel is not supported in this environment.'
+    );
+  });
   it('should create a BroadcastChannel with the given channel name', () => {
     const adapter = new BroadcastChannelAdapter('test-bc');
     // If constructor didn't throw, the channel was created

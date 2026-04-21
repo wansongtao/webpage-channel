@@ -1,3 +1,4 @@
+import { isSupportBroadcastChannel } from '../utils';
 import type {
   IChannelData,
   IErrorEvent,
@@ -38,6 +39,10 @@ export default class WebpageChannel<
     },
     adapter?: IWebpageChannelAdapter
   ) {
+    if (!adapter && !isSupportBroadcastChannel()) {
+      throw new Error('BroadcastChannel is not supported in this environment.');
+    }
+
     this.channelName = channelName;
     this.eventBus = new EventBus<T>({
       onListenerError: (error) => {

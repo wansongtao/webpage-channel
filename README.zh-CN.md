@@ -4,13 +4,13 @@
 
 一个轻量级、类型友好的浏览器端消息通信库。
 
-它提供统一的事件 API，用于在不同网页上下文之间通信，例如多标签页、iframe 与 worker 场景。默认基于 `BroadcastChannel`，并支持通过适配器扩展到 `postMessage` 等通信方式。
+它提供统一的事件 API，用于在不同网页上下文之间通信，例如多标签页、iframe 与 worker 场景。默认基于 `BroadcastChannel`，在不支持时自动降级到 `localStorage`，并支持通过适配器扩展到 `postMessage` 等通信方式。
 
 ## 特性
 
 - 轻量易用：`on`、`once`、`emit`、`off` 即可完成事件收发。
 - TypeScript 友好：通过泛型约束事件名和事件数据类型。
-- 可扩展适配器：默认 `BroadcastChannel`，可自定义适配器。
+- 可扩展适配器：默认 `BroadcastChannel`，不支持时自动降级到 `localStorage`，可自定义适配器。
 - 可自定义序列化：支持替换 `JSON.stringify/parse`。
 - 错误可观察：提供消息编解码错误与底层消息错误回调。
 
@@ -130,7 +130,38 @@ channel.close(); // 清空监听并关闭底层通道
 ### 内置适配器
 
 - `BroadcastChannelAdapter`：默认适配器，适合同源多标签页/上下文通信。
+- `LocalStorageAdapter`：基于 `localStorage` + `storage` 事件的降级适配器，适用于 `BroadcastChannel` 不可用的环境。仅支持同源跨标签页，发送方标签页不会收到自身发出的消息。
 - `PostMessageAdapter`：适合父页面与 iframe、弹窗窗口等基于 `window.postMessage` 的场景。
+
+> `WebpageChannel` 会按以下顺序自动选择适配器：`BroadcastChannel` → `localStorage` → 抛出错误。
+
+### 使用 LocalStorageAdapter
+
+如需强制使用 `localStorage` 通信，可直接传入 `LocalStorageAdapter`：
+
+```ts
+import { LocalStorageAdapter, WebpageChannel } from 'webpage-channel';
+
+type Events = {
+	'user:update': (payload: { id: string }) => void;
+};
+
+const adapter = new LocalStorageAdapter('app-channel');
+const channel = new WebpageChannel<Events>('app-channel', undefined, adapter);
+
+channel.on('user:update', (payload) => {
+	console.log('收到:', payload.id);
+});
+
+channel.emit('user:update', { id: 'u1' });
+```
+
+注意事项：
+
+- `LocalStorageAdapter` 仅适用于**同源跨标签页**通信。
+- 发送方标签页**不会**收到自身发出的消息（与 `BroadcastChannel` 行为一致）。
+- 每次发送都会写入 `localStorage`，调用 `close()` 时会清除对应的键。
+- 存储值中包含 `timestamp` 字段，确保连续发送相同内容时 `storage` 事件仍能正常触发。
 
 ### 使用 PostMessageAdapter
 
@@ -247,9 +278,10 @@ pnpm test
 pnpm test:coverage
 ```
 
-单元测试位于 `test/core/` 目录，覆盖全部三个核心模块：
+单元测试位于 `test/core/` 目录，覆盖全部四个核心模块：
 
 - `broadcast-channel-adapter.spec.ts`
+- `localstorage-adapter.spec.ts`
 - `postmessage-adapter.spec.ts`
 - `webpage-channel.spec.ts`
 

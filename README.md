@@ -4,13 +4,13 @@ English | [简体中文](./README.zh-CN.md)
 
 A lightweight, type-friendly messaging library for browser contexts.
 
-It provides a unified event API for communication across web contexts such as tabs, iframes, and workers. By default it uses `BroadcastChannel`, and can be extended with adapters like `postMessage`.
+It provides a unified event API for communication across web contexts such as tabs, iframes, and workers. By default it uses `BroadcastChannel`, and automatically falls back to `localStorage` if `BroadcastChannel` is unavailable. Can be extended with adapters like `postMessage`.
 
 ## Features
 
 - Lightweight API: communicate with just `on`, `once`, `emit`, and `off`.
 - TypeScript-friendly: strongly typed event names and payloads via generics.
-- Adapter extensibility: uses `BroadcastChannel` by default, supports custom adapters.
+- Adapter extensibility: uses `BroadcastChannel` by default, falls back to `localStorage` automatically, supports custom adapters.
 - Custom serialization: replace `JSON.stringify/parse` when needed.
 - Observable errors: hooks for encode/decode and low-level message errors.
 
@@ -130,7 +130,38 @@ The library abstracts transport with `IWebpageChannelAdapter`, so you can implem
 ### Built-in Adapters
 
 - `BroadcastChannelAdapter`: default adapter for same-origin multi-tab/context communication.
+- `LocalStorageAdapter`: fallback adapter based on `localStorage` + `storage` events, for environments where `BroadcastChannel` is unavailable. Same-origin multi-tab only; messages are not received by the sender tab.
 - `PostMessageAdapter`: good for parent/iframe and popup communication based on `window.postMessage`.
+
+> `WebpageChannel` selects an adapter automatically in this order: `BroadcastChannel` → `localStorage` → throws an error.
+
+### Using LocalStorageAdapter
+
+You can use `LocalStorageAdapter` directly if you need to force the `localStorage` transport:
+
+```ts
+import { LocalStorageAdapter, WebpageChannel } from 'webpage-channel';
+
+type Events = {
+	'user:update': (payload: { id: string }) => void;
+};
+
+const adapter = new LocalStorageAdapter('app-channel');
+const channel = new WebpageChannel<Events>('app-channel', undefined, adapter);
+
+channel.on('user:update', (payload) => {
+	console.log('Received:', payload.id);
+});
+
+channel.emit('user:update', { id: 'u1' });
+```
+
+Notes:
+
+- `LocalStorageAdapter` is for **same-origin, cross-tab** communication only.
+- A tab will **not** receive its own messages (consistent with `BroadcastChannel` behavior).
+- Each message writes to `localStorage`, which persists briefly; the key is removed when `close()` is called.
+- The stored value includes a `timestamp` field to ensure the `storage` event fires even when the same message is sent consecutively.
 
 ### Using PostMessageAdapter
 
@@ -247,9 +278,10 @@ pnpm test
 pnpm test:coverage
 ```
 
-Unit tests are organized under `test/core/`, covering all three core modules:
+Unit tests are organized under `test/core/`, covering all four core modules:
 
 - `broadcast-channel-adapter.spec.ts`
+- `localstorage-adapter.spec.ts`
 - `postmessage-adapter.spec.ts`
 - `webpage-channel.spec.ts`
 

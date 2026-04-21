@@ -1,4 +1,3 @@
-import { isSupportBroadcastChannel } from '../utils';
 import type {
   IChannelData,
   IErrorEvent,
@@ -39,10 +38,6 @@ export default class WebpageChannel<
     },
     adapter?: IWebpageChannelAdapter
   ) {
-    if (!adapter && !isSupportBroadcastChannel()) {
-      throw new Error('BroadcastChannel is not supported in this environment.');
-    }
-
     this.channelName = channelName;
     this.eventBus = new EventBus<T>({
       onListenerError: (error) => {
@@ -105,7 +100,7 @@ export default class WebpageChannel<
   private postMessage(data: IChannelData<Parameters<T[keyof T]>, keyof T>) {
     if (!this.adapter) {
       const error = new Error('Adapter is not initialized');
-      this.onError && this.onError(error);
+      this.onError?.(error);
       return false;
     }
 
@@ -113,12 +108,9 @@ export default class WebpageChannel<
       const message = this.serializeMessage(data);
       this.adapter?.postMessage(message);
       return true;
-    } catch (e: any) {
-      if (!(e instanceof Error)) {
-        e = new Error(e);
-      }
-
-      this.onError && this.onError(e);
+    } catch (e: unknown) {
+      const error = e instanceof Error ? e : new Error(String(e));
+      this.onError?.(error);
       return false;
     }
   }
@@ -129,12 +121,9 @@ export default class WebpageChannel<
 
       try {
         res = this.deserializeMessage(message);
-      } catch (e: any) {
-        if (!(e instanceof Error)) {
-          e = new Error(e);
-        }
-
-        this.onError && this.onError(e);
+      } catch (e: unknown) {
+        const error = e instanceof Error ? e : new Error(String(e));
+        this.onError?.(error);
         return;
       }
 

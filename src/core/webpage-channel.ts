@@ -6,7 +6,9 @@ import type {
 } from '../types';
 
 import BroadcastChannelAdapter from './broadcast-channel-adapter';
+import LocalStorageAdapter from './localstorage-adapter';
 import EventBus from './event-bus';
+import { isSupportBroadcastChannel, isSupportLocalStorage } from '../utils';
 
 export default class WebpageChannel<
   T extends Record<string, (args: any) => void>
@@ -38,13 +40,26 @@ export default class WebpageChannel<
     },
     adapter?: IWebpageChannelAdapter
   ) {
+    if (!adapter) {
+      if (isSupportBroadcastChannel()) {
+        this.adapter = new BroadcastChannelAdapter(channelName);
+      } else if (isSupportLocalStorage()) {
+        this.adapter = new LocalStorageAdapter(channelName);
+      } else {
+        throw new Error(
+          'Neither BroadcastChannel nor localStorage is supported in this environment.'
+        );
+      }
+    } else {
+      this.adapter = adapter;
+    }
+
     this.channelName = channelName;
     this.eventBus = new EventBus<T>({
       onListenerError: (error) => {
         this.onError?.(error);
       }
     });
-    this.adapter = adapter ?? new BroadcastChannelAdapter(channelName);
     this.onMessage();
 
     this.onError = options?.onError;

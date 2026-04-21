@@ -1,8 +1,24 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import * as utils from '../../src/utils';
 import PostMessageAdapter from '../../src/core/postmessage-adapter';
 
 describe('PostMessageAdapter', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('should throw if postMessage is not supported', () => {
+    vi.spyOn(utils, 'isSupportPostMessage').mockReturnValue(false);
+
+    expect(() => new PostMessageAdapter(window, 'https://target.test')).toThrow(
+      'postMessage is not supported in this environment.'
+    );
+  });
   it('should call targetWindow.postMessage with message and targetOrigin', () => {
     const mockWindow = { postMessage: vi.fn() } as unknown as Window;
     const adapter = new PostMessageAdapter(mockWindow, 'https://target.test');

@@ -1,4 +1,5 @@
 import type { IWebpageChannelAdapter } from '../types';
+import { isSupportPostMessage } from '../utils';
 
 export default class PostMessageAdapter implements IWebpageChannelAdapter {
   private targetWindow: Window;
@@ -7,6 +8,9 @@ export default class PostMessageAdapter implements IWebpageChannelAdapter {
   private messageErrorHandler: ((e: MessageEvent) => void) | null = null;
 
   constructor(targetWindow: Window, targetOrigin: string) {
+    if (!isSupportPostMessage()) {
+      throw new Error('postMessage is not supported in this environment.');
+    }
     this.targetWindow = targetWindow;
     this.targetOrigin = targetOrigin;
   }

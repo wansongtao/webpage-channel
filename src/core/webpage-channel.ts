@@ -119,8 +119,9 @@ export default class WebpageChannel<
   }
 
   private onMessage() {
-    this.adapter?.onMessage((message) => {
+    const callback = (message: string) => {
       let res: IChannelData<Parameters<T[keyof T]>, keyof T>;
+
       try {
         res = this.deserializeMessage(message);
       } catch (e: any) {
@@ -143,6 +144,8 @@ export default class WebpageChannel<
 
       // @ts-ignore
       this.eventBus.emit(key, res.data);
-    });
+    };
+
+    this.adapter?.onMessage(callback);
   }
 }

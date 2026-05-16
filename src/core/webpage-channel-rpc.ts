@@ -1,4 +1,5 @@
 import type {
+  PendingRequest,
   RequestParams,
   RequestPayload,
   ResponsePayload,
@@ -13,6 +14,8 @@ import { generateLocalId } from 'src/utils';
 
 export default class WebpageChannelRpc<T extends Record<string, RpcFn>> {
   private channel: WebpageChannel<any>;
+  private pendingRequests = new Map<string, PendingRequest>();
+  private registeredHandlerEvents = new Set<PropertyKey>();
   private options: RpcOptions = {
     timeout: 5000,
     generateUniqueId: generateLocalId
@@ -46,15 +49,31 @@ export default class WebpageChannelRpc<T extends Record<string, RpcFn>> {
     const id = `req:${String(event)}:${generateUniqueId()}`;
 
     return new Promise((resolve) => {
-      const timer = setTimeout(() => {
+      let timer: ReturnType<typeof setTimeout>;
+
+      const cleanup = () => {
+        clearTimeout(timer);
         this.channel.off(this.getResponseEventKey(id));
+        this.pendingRequests.delete(id);
+      };
+
+      this.pendingRequests.set(id, {
+        event,
+        cancel: (err: Error) => {
+          cleanup();
+          resolve([err]);
+        }
+      });
+
+      timer = setTimeout(() => {
+        cleanup();
         resolve([new Error(`Request timed out for event: ${String(event)}`)]);
       }, resolvedTimeout);
 
-      this.channel.once(
+      this.channel.on(
         this.getResponseEventKey(id),
         ({ result, error }: ResponseResult<T[K]>) => {
-          clearTimeout(timer);
+          cleanup();
 
           if (error) {
             const err = new Error(error.message);
@@ -69,8 +88,7 @@ export default class WebpageChannelRpc<T extends Record<string, RpcFn>> {
       const key = this.getRequestEventKey(event);
       const res = this.channel.emit(key, { id, payload });
       if (!res) {
-        clearTimeout(timer);
-        this.channel.off(this.getResponseEventKey(id));
+        cleanup();
         resolve([new Error(`Emit failed for event: ${String(event)}`)]);
       }
     });
@@ -99,15 +117,37 @@ export default class WebpageChannelRpc<T extends Record<string, RpcFn>> {
         this.channel.emit(this.getResponseEventKey(id), { error });
       }
     });
+    this.registeredHandlerEvents.add(event);
   }
 
   off<K extends keyof T>(event: K): void {
+    const pending = [...this.pendingRequests.entries()].filter(
+      ([, { event: e }]) => e === event
+    );
+    for (const [, { cancel }] of pending) {
+      cancel(
+        new Error(
+          `Request cancelled: handler for "${String(event)}" was removed`
+        )
+      );
+    }
+
     const key = this.getRequestEventKey(event);
     this.channel.off(key);
+    this.registeredHandlerEvents.delete(event);
   }
 
   clear(): void {
-    this.channel.clear();
+    const pending = [...this.pendingRequests.values()];
+    for (const { cancel } of pending) {
+      cancel(new Error('RPC handlers were cleared'));
+    }
+
+    for (const event of this.registeredHandlerEvents) {
+      const key = this.getRequestEventKey(event as keyof T);
+      this.channel.off(key);
+    }
+    this.registeredHandlerEvents.clear();
   }
 
   close(): void {

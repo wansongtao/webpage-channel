@@ -24,6 +24,10 @@ export type SerializedError = {
   message: string;
   name: string;
 };
+export type PendingRequest = {
+  event: PropertyKey;
+  cancel: (err: Error) => void;
+};
 export type ResponseResult<F extends RpcFn> = {
   result?: ResponsePayload<F>;
   error?: SerializedError;

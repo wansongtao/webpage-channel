@@ -123,9 +123,144 @@ Clears all listeners on the current instance.
 
 Clears listeners and closes the underlying adapter.
 
-## Adapter Extension
+## RPC (Request / Response)
 
-The library abstracts transport with `IWebpageChannelAdapter`, so you can implement your own adapter (for example `window.postMessage`, `MessagePort`, and others).
+`WebpageChannelRpc` wraps a `WebpageChannel` and adds request/response and one-way notification semantics on top of the raw event bus.
+
+Use it when one side needs to call a remote function and receive a result, rather than fire-and-forget events.
+
+### Quick Start
+
+```ts
+import { WebpageChannelRpc } from 'webpage-channel';
+
+type Api = {
+  add: (payload: { a: number; b: number }) => number;
+  log: (payload: { text: string }) => void;
+};
+
+const rpcA = new WebpageChannelRpc<Api>(channelA);
+const rpcB = new WebpageChannelRpc<Api>(channelB);
+
+// register a handler on rpcA
+rpcA.response('add', ({ a, b }) => a + b);
+
+// call it from rpcB
+const [err, result] = await rpcB.request('add', { a: 3, b: 4 });
+// result === 7
+```
+
+Or use the `createRpcChannel` factory to skip creating a `WebpageChannel` manually:
+
+```ts
+import { createRpcChannel } from 'webpage-channel';
+
+const rpcA = createRpcChannel<Api>('my-channel');
+const rpcB = createRpcChannel<Api>('my-channel');
+```
+
+`createRpcChannel` accepts the same `channelName`, `options.channel`, `options.rpc`, and `adapter` arguments as the separate constructors.
+
+### Return value convention
+
+`request` always resolves — never rejects. The result is a discriminated tuple:
+
+```ts
+const [err, result] = await rpc.request('add', { a: 1, b: 2 });
+
+if (err) {
+  // timeout, emit failure, remote handler threw, or AbortSignal fired
+  console.error(err.message);
+} else {
+  console.log(result); // typed as the handler's return type
+}
+```
+
+### RPC API
+
+#### `rpc.request(event, payload, timeout?, signal?)`
+
+Send a request and wait for the response.
+
+- `timeout` — per-call override in ms; defaults to the instance-level timeout (default `5000`).
+- `signal` — an `AbortSignal` to cancel the request externally.
+
+Returns `Promise<[Error] | [undefined, result]>`.
+
+```ts
+// with a custom timeout
+const [err, result] = await rpc.request('add', { a: 1, b: 2 }, 3000);
+
+// cancellable via AbortController
+const controller = new AbortController();
+setTimeout(() => controller.abort(), 1000);
+const [err2, result2] = await rpc.request('add', { a: 1, b: 2 }, undefined, controller.signal);
+```
+
+#### `rpc.response(event, handler): () => void`
+
+Register a handler for an incoming request. Returns a cancel function that unregisters the handler.
+
+```ts
+const cancel = rpcA.response('add', ({ a, b }) => a + b);
+
+// async handlers are supported
+rpcA.response('greet', async ({ name }) => {
+  const greeting = await fetchGreeting(name);
+  return greeting;
+});
+
+cancel(); // unregister when no longer needed
+```
+
+#### `rpc.notify(event, payload): boolean`
+
+Send a one-way notification. No response is expected. Returns `false` if the channel is closed.
+
+```ts
+rpcB.notify('log', { text: 'hello' });
+```
+
+#### `rpc.onNotify(event, handler): () => void`
+
+Register a listener for incoming notifications. Returns a cancel function.
+
+```ts
+const cancel = rpcA.onNotify('log', ({ text }) => {
+  console.log(text);
+});
+
+cancel(); // unregister
+```
+
+#### `rpc.off(event)`
+
+Unregister the response handler for an event and cancel any pending outgoing requests for that event.
+
+#### `rpc.offNotify(event)`
+
+Unregister the notification listener for an event.
+
+#### `rpc.clear()`
+
+Cancel all pending requests and remove all response handlers and notification listeners. Does **not** close the underlying channel.
+
+#### `rpc.close()`
+
+Calls `clear()` then closes the underlying channel. The instance must not be used after this.
+
+### RPC Options
+
+Pass options as the second argument to `WebpageChannelRpc` (or `options.rpc` in `createRpcChannel`):
+
+```ts
+const rpc = new WebpageChannelRpc<Api>(channel, {
+  timeout: 10_000,                     // default request timeout in ms
+  generateUniqueId: () => myUuid(),    // custom request ID generator
+});
+```
+
+## Adapter Extension
 
 ### Built-in Adapters
 

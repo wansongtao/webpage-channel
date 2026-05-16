@@ -123,6 +123,143 @@ channel.close(); // 清空监听并关闭底层通道
 
 清空监听器并关闭底层适配器。
 
+## RPC（请求 / 响应）
+
+`WebpageChannelRpc` 对 `WebpageChannel` 进行封装，在原有事件总线基础上增加了请求/响应和单向通知语义。
+
+当需要一端调用远端函数并获取返回值时使用，而非仅发送即忘的事件。
+
+### 快速开始
+
+```ts
+import { WebpageChannelRpc } from 'webpage-channel';
+
+type Api = {
+  add: (payload: { a: number; b: number }) => number;
+  log: (payload: { text: string }) => void;
+};
+
+const rpcA = new WebpageChannelRpc<Api>(channelA);
+const rpcB = new WebpageChannelRpc<Api>(channelB);
+
+// rpcA 注册处理函数
+rpcA.response('add', ({ a, b }) => a + b);
+
+// rpcB 发起调用
+const [err, result] = await rpcB.request('add', { a: 3, b: 4 });
+// result === 7
+```
+
+也可使用 `createRpcChannel` 工厂函数，省去手动创建 `WebpageChannel` 的步骤：
+
+```ts
+import { createRpcChannel } from 'webpage-channel';
+
+const rpcA = createRpcChannel<Api>('my-channel');
+const rpcB = createRpcChannel<Api>('my-channel');
+```
+
+`createRpcChannel` 支持与独立构造函数相同的 `channelName`、`options.channel`、`options.rpc` 和 `adapter` 参数。
+
+### 返回值约定
+
+`request` 始终 resolve，永不 reject。结果为可判别的元组：
+
+```ts
+const [err, result] = await rpc.request('add', { a: 1, b: 2 });
+
+if (err) {
+  // 超时、发送失败、远端 handler 抛错或 AbortSignal 触发
+  console.error(err.message);
+} else {
+  console.log(result); // 类型为 handler 的返回类型
+}
+```
+
+### RPC API
+
+#### `rpc.request(event, payload, timeout?, signal?)`
+
+发送请求并等待响应。
+
+- `timeout` — 单次调用超时时间（ms），覆盖实例级默认值（默认 `5000`）。
+- `signal` — 可选 `AbortSignal`，用于外部主动取消请求。
+
+返回 `Promise<[Error] | [undefined, result]>`。
+
+```ts
+// 自定义超时
+const [err, result] = await rpc.request('add', { a: 1, b: 2 }, 3000);
+
+// 通过 AbortController 取消
+const controller = new AbortController();
+setTimeout(() => controller.abort(), 1000);
+const [err2, result2] = await rpc.request('add', { a: 1, b: 2 }, undefined, controller.signal);
+```
+
+#### `rpc.response(event, handler): () => void`
+
+注册处理指定请求的函数。返回一个取消函数，调用后注销该处理函数。
+
+```ts
+const cancel = rpcA.response('add', ({ a, b }) => a + b);
+
+// 支持 async handler
+rpcA.response('greet', async ({ name }) => {
+  const greeting = await fetchGreeting(name);
+  return greeting;
+});
+
+cancel(); // 不再需要时注销
+```
+
+#### `rpc.notify(event, payload): boolean`
+
+发送单向通知，不等待响应。通道已关闭时返回 `false`。
+
+```ts
+rpcB.notify('log', { text: 'hello' });
+```
+
+#### `rpc.onNotify(event, handler): () => void`
+
+注册单向通知的监听器。返回一个取消函数。
+
+```ts
+const cancel = rpcA.onNotify('log', ({ text }) => {
+  console.log(text);
+});
+
+cancel(); // 注销
+```
+
+#### `rpc.off(event)`
+
+注销指定事件的 response handler，并取消所有针对该事件的 pending 请求。
+
+#### `rpc.offNotify(event)`
+
+注销指定事件的通知监听器。
+
+#### `rpc.clear()`
+
+取消所有 pending 请求，移除所有 response handler 和通知监听器。**不会**关闭底层通道。
+
+#### `rpc.close()`
+
+先调用 `clear()`，再关闭底层通道。调用后实例不可再使用。
+
+### RPC 配置项
+
+作为第二参数传入 `WebpageChannelRpc`（或 `createRpcChannel` 的 `options.rpc`）：
+
+```ts
+const rpc = new WebpageChannelRpc<Api>(channel, {
+  timeout: 10_000,                     // 默认请求超时时间（ms）
+  generateUniqueId: () => myUuid(),    // 自定义请求 ID 生成函数
+});
+```
+
 ## 适配器扩展
 
 库通过 `IWebpageChannelAdapter` 抽象底层通信能力，你可以按需实现自己的适配器（例如 `window.postMessage`、`MessagePort` 等）。

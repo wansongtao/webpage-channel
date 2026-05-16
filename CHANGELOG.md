@@ -6,6 +6,19 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+### Added
+
+- Added `ChannelError` class that extends `Error` with a `name` property typed as `'TimeoutError' | 'AbortError' | 'EmitError' | 'Error'`. Used as the error value in all `WebpageChannelRpc.request()` failure tuples.
+- Added `ErrorName` type alias (`'TimeoutError' | 'AbortError' | 'EmitError' | 'Error'`).
+- Exported `ChannelError` and `ErrorName` from the package entry point.
+- Added unit tests for `ChannelError` under `test/core/channel-error.spec.ts` (7 tests, 100% coverage).
+
+### Changed
+
+- `WebpageChannelRpc.request()` now returns `[ChannelError]` on failure instead of `[Error]`, allowing callers to inspect `err.name` to distinguish error kinds (`'TimeoutError'`, `'AbortError'`, `'EmitError'`, `'Error'`).
+- `WebpageChannelRpc.request()`: aborting via `AbortSignal` now always resolves with `ChannelError('AbortError', ...)` regardless of the abort reason; `signal.reason` is no longer forwarded.
+- `WebpageChannelRpc.request()`: errors thrown inside response handlers are always serialized with `name: 'Error'`; the original error type name is not preserved across the message boundary.
+
 ## [1.2.0] - 2026-05-16
 
 ### Added

@@ -4,7 +4,8 @@ import type {
   ResponsePayload,
   ResponseResult,
   RpcFn,
-  RpcOptions
+  RpcOptions,
+  SerializedError
 } from 'src/types';
 
 import WebpageChannel from './webpage-channel';
@@ -56,7 +57,9 @@ export default class WebpageChannelRpc<T extends Record<string, RpcFn>> {
           clearTimeout(timer);
 
           if (error) {
-            resolve([error]);
+            const err = new Error(error.message);
+            err.name = error.name;
+            resolve([err]);
           } else {
             resolve([undefined, result!]);
           }
@@ -91,7 +94,8 @@ export default class WebpageChannelRpc<T extends Record<string, RpcFn>> {
         const result = await handler(payload);
         this.channel.emit(this.getResponseEventKey(id), { result });
       } catch (e: unknown) {
-        const error = e instanceof Error ? e : new Error(String(e));
+        const raw = e instanceof Error ? e : new Error(String(e));
+        const error: SerializedError = { message: raw.message, name: raw.name };
         this.channel.emit(this.getResponseEventKey(id), { error });
       }
     });

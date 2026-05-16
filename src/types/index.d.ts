@@ -20,9 +20,13 @@ export type RequestParams<F extends RpcFn> = {
   id: string;
   payload: RequestPayload<F>;
 };
+export type SerializedError = {
+  message: string;
+  name: string;
+};
 export type ResponseResult<F extends RpcFn> = {
   result?: ResponsePayload<F>;
-  error?: Error;
+  error?: SerializedError;
 };
 export interface RpcOptions {
   timeout: number;

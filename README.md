@@ -13,6 +13,7 @@ It provides a unified event API for communication across web contexts such as ta
 - Adapter extensibility: uses `BroadcastChannel` by default, falls back to `localStorage` automatically, supports custom adapters.
 - Custom serialization: replace `JSON.stringify/parse` when needed.
 - Observable errors: hooks for encode/decode and low-level message errors.
+- RPC layer: request/response and one-way notification via `WebpageChannelRpc`.
 
 ## Installation
 
@@ -132,34 +133,39 @@ Use it when one side needs to call a remote function and receive a result, rathe
 ### Quick Start
 
 ```ts
-import { WebpageChannelRpc } from 'webpage-channel';
+import { createRpcChannel } from 'webpage-channel';
 
 type Api = {
-  add: (payload: { a: number; b: number }) => number;
-  log: (payload: { text: string }) => void;
+	add: (payload: { a: number; b: number }) => number;
+	log: (payload: { text: string }) => void;
 };
-
-const rpcA = new WebpageChannelRpc<Api>(channelA);
-const rpcB = new WebpageChannelRpc<Api>(channelB);
-
-// register a handler on rpcA
-rpcA.response('add', ({ a, b }) => a + b);
-
-// call it from rpcB
-const [err, result] = await rpcB.request('add', { a: 3, b: 4 });
-// result === 7
-```
-
-Or use the `createRpcChannel` factory to skip creating a `WebpageChannel` manually:
-
-```ts
-import { createRpcChannel } from 'webpage-channel';
 
 const rpcA = createRpcChannel<Api>('my-channel');
 const rpcB = createRpcChannel<Api>('my-channel');
+
+// request / response
+rpcA.response('add', ({ a, b }) => a + b);
+const [err, result] = await rpcB.request('add', { a: 3, b: 4 });
+// result === 7
+
+// one-way notification
+rpcA.onNotify('log', ({ text }) => console.log(text));
+rpcB.notify('log', { text: 'hello' });
 ```
 
-`createRpcChannel` accepts the same `channelName`, `options.channel`, `options.rpc`, and `adapter` arguments as the separate constructors.
+For custom channel setup, use `WebpageChannelRpc` directly:
+
+```ts
+import { WebpageChannelRpc, WebpageChannel } from 'webpage-channel';
+
+const channelA = new WebpageChannel<Api>('my-channel');
+const channelB = new WebpageChannel<Api>('my-channel');
+
+const rpcA = new WebpageChannelRpc<Api>(channelA);
+const rpcB = new WebpageChannelRpc<Api>(channelB);
+```
+
+`createRpcChannel` and `WebpageChannelRpc` both accept `channelName`, `options.channel`, `options.rpc`, and `adapter`.
 
 ### Return value convention
 
@@ -169,10 +175,10 @@ const rpcB = createRpcChannel<Api>('my-channel');
 const [err, result] = await rpc.request('add', { a: 1, b: 2 });
 
 if (err) {
-  // timeout, emit failure, remote handler threw, or AbortSignal fired
-  console.error(err.message);
+	// timeout, emit failure, remote handler threw, or AbortSignal fired
+	console.error(err.message);
 } else {
-  console.log(result); // typed as the handler's return type
+	console.log(result); // typed as the handler's return type
 }
 ```
 
@@ -206,8 +212,8 @@ const cancel = rpcA.response('add', ({ a, b }) => a + b);
 
 // async handlers are supported
 rpcA.response('greet', async ({ name }) => {
-  const greeting = await fetchGreeting(name);
-  return greeting;
+	const greeting = await fetchGreeting(name);
+	return greeting;
 });
 
 cancel(); // unregister when no longer needed
@@ -227,7 +233,7 @@ Register a listener for incoming notifications. Returns a cancel function.
 
 ```ts
 const cancel = rpcA.onNotify('log', ({ text }) => {
-  console.log(text);
+	console.log(text);
 });
 
 cancel(); // unregister
@@ -237,9 +243,13 @@ cancel(); // unregister
 
 Unregister the response handler for an event and cancel any pending outgoing requests for that event.
 
+> Prefer the cancel function returned by `response()` for one-off unregistration. Use `off()` when you need to remove a handler that was registered elsewhere.
+
 #### `rpc.offNotify(event)`
 
 Unregister the notification listener for an event.
+
+> Prefer the cancel function returned by `onNotify()` for one-off unregistration. Use `offNotify()` when you need to remove a listener that was registered elsewhere.
 
 #### `rpc.clear()`
 
@@ -255,8 +265,8 @@ Pass options as the second argument to `WebpageChannelRpc` (or `options.rpc` in 
 
 ```ts
 const rpc = new WebpageChannelRpc<Api>(channel, {
-  timeout: 10_000,                     // default request timeout in ms
-  generateUniqueId: () => myUuid(),    // custom request ID generator
+	timeout: 10_000,                  // default request timeout in ms
+	generateUniqueId: () => myUuid(), // custom request ID generator
 });
 ```
 

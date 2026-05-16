@@ -13,6 +13,7 @@
 - 可扩展适配器：默认 `BroadcastChannel`，不支持时自动降级到 `localStorage`，可自定义适配器。
 - 可自定义序列化：支持替换 `JSON.stringify/parse`。
 - 错误可观察：提供消息编解码错误与底层消息错误回调。
+- RPC 层：通过 `WebpageChannelRpc` 支持请求/响应与单向通知。
 
 ## 安装
 
@@ -132,34 +133,39 @@ channel.close(); // 清空监听并关闭底层通道
 ### 快速开始
 
 ```ts
-import { WebpageChannelRpc } from 'webpage-channel';
+import { createRpcChannel } from 'webpage-channel';
 
 type Api = {
-  add: (payload: { a: number; b: number }) => number;
-  log: (payload: { text: string }) => void;
+	add: (payload: { a: number; b: number }) => number;
+	log: (payload: { text: string }) => void;
 };
-
-const rpcA = new WebpageChannelRpc<Api>(channelA);
-const rpcB = new WebpageChannelRpc<Api>(channelB);
-
-// rpcA 注册处理函数
-rpcA.response('add', ({ a, b }) => a + b);
-
-// rpcB 发起调用
-const [err, result] = await rpcB.request('add', { a: 3, b: 4 });
-// result === 7
-```
-
-也可使用 `createRpcChannel` 工厂函数，省去手动创建 `WebpageChannel` 的步骤：
-
-```ts
-import { createRpcChannel } from 'webpage-channel';
 
 const rpcA = createRpcChannel<Api>('my-channel');
 const rpcB = createRpcChannel<Api>('my-channel');
+
+// 请求 / 响应
+rpcA.response('add', ({ a, b }) => a + b);
+const [err, result] = await rpcB.request('add', { a: 3, b: 4 });
+// result === 7
+
+// 单向通知
+rpcA.onNotify('log', ({ text }) => console.log(text));
+rpcB.notify('log', { text: 'hello' });
 ```
 
-`createRpcChannel` 支持与独立构造函数相同的 `channelName`、`options.channel`、`options.rpc` 和 `adapter` 参数。
+如需自定义 channel 配置，可直接使用 `WebpageChannelRpc`：
+
+```ts
+import { WebpageChannelRpc, WebpageChannel } from 'webpage-channel';
+
+const channelA = new WebpageChannel<Api>('my-channel');
+const channelB = new WebpageChannel<Api>('my-channel');
+
+const rpcA = new WebpageChannelRpc<Api>(channelA);
+const rpcB = new WebpageChannelRpc<Api>(channelB);
+```
+
+`createRpcChannel` 与 `WebpageChannelRpc` 均支持 `channelName`、`options.channel`、`options.rpc` 和 `adapter` 参数。
 
 ### 返回值约定
 
@@ -169,10 +175,10 @@ const rpcB = createRpcChannel<Api>('my-channel');
 const [err, result] = await rpc.request('add', { a: 1, b: 2 });
 
 if (err) {
-  // 超时、发送失败、远端 handler 抛错或 AbortSignal 触发
-  console.error(err.message);
+	// 超时、发送失败、远端 handler 抛错或 AbortSignal 触发
+	console.error(err.message);
 } else {
-  console.log(result); // 类型为 handler 的返回类型
+	console.log(result); // 类型为 handler 的返回类型
 }
 ```
 
@@ -206,8 +212,8 @@ const cancel = rpcA.response('add', ({ a, b }) => a + b);
 
 // 支持 async handler
 rpcA.response('greet', async ({ name }) => {
-  const greeting = await fetchGreeting(name);
-  return greeting;
+	const greeting = await fetchGreeting(name);
+	return greeting;
 });
 
 cancel(); // 不再需要时注销
@@ -227,7 +233,7 @@ rpcB.notify('log', { text: 'hello' });
 
 ```ts
 const cancel = rpcA.onNotify('log', ({ text }) => {
-  console.log(text);
+	console.log(text);
 });
 
 cancel(); // 注销
@@ -237,9 +243,13 @@ cancel(); // 注销
 
 注销指定事件的 response handler，并取消所有针对该事件的 pending 请求。
 
+> 优先使用 `response()` 返回的取消函数来注销 handler；仅当需要注销在其他地方注册的 handler 时才使用 `off()`。
+
 #### `rpc.offNotify(event)`
 
 注销指定事件的通知监听器。
+
+> 优先使用 `onNotify()` 返回的取消函数来注销监听器；仅当需要注销在其他地方注册的监听器时才使用 `offNotify()`。
 
 #### `rpc.clear()`
 
@@ -255,8 +265,8 @@ cancel(); // 注销
 
 ```ts
 const rpc = new WebpageChannelRpc<Api>(channel, {
-  timeout: 10_000,                     // 默认请求超时时间（ms）
-  generateUniqueId: () => myUuid(),    // 自定义请求 ID 生成函数
+	timeout: 10_000,                  // 默认请求超时时间（ms）
+	generateUniqueId: () => myUuid(), // 自定义请求 ID 生成函数
 });
 ```
 

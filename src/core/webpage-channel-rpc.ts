@@ -150,11 +150,13 @@ export default class WebpageChannelRpc<T extends Record<string, RpcFn>> {
   onNotify<K extends keyof T>(
     event: K,
     handler: (payload: RequestPayload<T[K]>) => void
-  ): void {
+  ): () => void {
     this.offNotify(event);
     const key = this.getNotifyEventKey(event);
     this.channel.on(key, handler);
     this.registeredNotifyEvents.add(event);
+
+    return () => this.offNotify(event);
   }
 
   offNotify<K extends keyof T>(event: K): void {
@@ -200,6 +202,7 @@ export default class WebpageChannelRpc<T extends Record<string, RpcFn>> {
   }
 
   close(): void {
+    this.clear();
     this.channel.close();
   }
 }

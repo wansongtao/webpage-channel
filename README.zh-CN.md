@@ -417,6 +417,8 @@ const channel = new WebpageChannel<Events>('secure-channel', {
 
 ## 测试
 
+当前覆盖率：语句、分支、函数、行均为 **100%**。
+
 ```bash
 # 监听模式运行测试
 pnpm test
@@ -424,15 +426,6 @@ pnpm test
 # 运行测试并生成覆盖率报告
 pnpm test:coverage
 ```
-
-单元测试位于 `test/core/` 目录，覆盖全部四个核心模块：
-
-- `broadcast-channel-adapter.spec.ts`
-- `localstorage-adapter.spec.ts`
-- `postmessage-adapter.spec.ts`
-- `webpage-channel.spec.ts`
-
-当前覆盖率：语句、分支、函数、行均为 **100%**。
 
 ## 许可证
 

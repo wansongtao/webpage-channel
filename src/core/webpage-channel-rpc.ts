@@ -10,7 +10,7 @@ import type {
 } from 'src/types';
 
 import WebpageChannel from './webpage-channel';
-import { generateLocalId } from 'src/utils';
+import { generateLocalId, toAbortError } from 'src/utils';
 
 export default class WebpageChannelRpc<T extends Record<string, RpcFn>> {
   private channel: WebpageChannel<any>;
@@ -47,19 +47,31 @@ export default class WebpageChannelRpc<T extends Record<string, RpcFn>> {
   request<K extends keyof T>(
     event: K,
     payload: RequestPayload<T[K]>,
-    timeout?: number
+    timeout?: number,
+    signal?: AbortSignal
   ): Promise<[Error] | [undefined, ResponsePayload<T[K]>]> {
     const { timeout: defaultTimeout, generateUniqueId } = this.options;
     const resolvedTimeout = timeout ?? defaultTimeout;
     const id = `req:${String(event)}:${generateUniqueId()}`;
 
     return new Promise((resolve) => {
+      if (signal?.aborted) {
+        resolve([toAbortError(signal.reason)]);
+        return;
+      }
+
       let timer: ReturnType<typeof setTimeout>;
 
       const cleanup = () => {
         clearTimeout(timer);
         this.channel.off(this.getResponseEventKey(id));
         this.pendingRequests.delete(id);
+        signal?.removeEventListener('abort', onAbort);
+      };
+
+      const onAbort = () => {
+        cleanup();
+        resolve([toAbortError(signal!.reason)]);
       };
 
       this.pendingRequests.set(id, {
@@ -74,6 +86,8 @@ export default class WebpageChannelRpc<T extends Record<string, RpcFn>> {
         cleanup();
         resolve([new Error(`Request timed out for event: ${String(event)}`)]);
       }, resolvedTimeout);
+
+      signal?.addEventListener('abort', onAbort, { once: true });
 
       this.channel.once(
         this.getResponseEventKey(id),
@@ -102,13 +116,14 @@ export default class WebpageChannelRpc<T extends Record<string, RpcFn>> {
   /**
    * Register a handler for the given RPC event.
    * If a handler is already registered for the same event, it will be replaced silently.
+   * Returns a function that unregisters the handler when called.
    */
   response<K extends keyof T>(
     event: K,
     handler: (
       payload: RequestPayload<T[K]>
     ) => ResponsePayload<T[K]> | Promise<ResponsePayload<T[K]>>
-  ): void {
+  ): () => void {
     this.off(event);
 
     const key = this.getRequestEventKey(event);
@@ -123,6 +138,8 @@ export default class WebpageChannelRpc<T extends Record<string, RpcFn>> {
       }
     });
     this.registeredHandlerEvents.add(event);
+
+    return () => this.off(event);
   }
 
   notify<K extends keyof T>(event: K, payload: RequestPayload<T[K]>): boolean {

@@ -16,6 +16,7 @@ export default class WebpageChannelRpc<T extends Record<string, RpcFn>> {
   private channel: WebpageChannel<any>;
   private pendingRequests = new Map<string, PendingRequest>();
   private registeredHandlerEvents = new Set<PropertyKey>();
+  private registeredNotifyEvents = new Set<PropertyKey>();
   private options: RpcOptions = {
     timeout: 5000,
     generateUniqueId: generateLocalId
@@ -37,6 +38,10 @@ export default class WebpageChannelRpc<T extends Record<string, RpcFn>> {
 
   private getResponseEventKey(id: string): string {
     return `@response:${id}`;
+  }
+
+  private getNotifyEventKey<K extends keyof T>(event: K): string {
+    return `@notify:_${String(event)}_`;
   }
 
   request<K extends keyof T>(
@@ -70,7 +75,7 @@ export default class WebpageChannelRpc<T extends Record<string, RpcFn>> {
         resolve([new Error(`Request timed out for event: ${String(event)}`)]);
       }, resolvedTimeout);
 
-      this.channel.on(
+      this.channel.once(
         this.getResponseEventKey(id),
         ({ result, error }: ResponseResult<T[K]>) => {
           cleanup();
@@ -120,6 +125,27 @@ export default class WebpageChannelRpc<T extends Record<string, RpcFn>> {
     this.registeredHandlerEvents.add(event);
   }
 
+  notify<K extends keyof T>(event: K, payload: RequestPayload<T[K]>): boolean {
+    const key = this.getNotifyEventKey(event);
+    return this.channel.emit(key, payload);
+  }
+
+  onNotify<K extends keyof T>(
+    event: K,
+    handler: (payload: RequestPayload<T[K]>) => void
+  ): void {
+    this.offNotify(event);
+    const key = this.getNotifyEventKey(event);
+    this.channel.on(key, handler);
+    this.registeredNotifyEvents.add(event);
+  }
+
+  offNotify<K extends keyof T>(event: K): void {
+    const key = this.getNotifyEventKey(event);
+    this.channel.off(key);
+    this.registeredNotifyEvents.delete(event);
+  }
+
   off<K extends keyof T>(event: K): void {
     const pending = [...this.pendingRequests.entries()].filter(
       ([, { event: e }]) => e === event
@@ -148,6 +174,12 @@ export default class WebpageChannelRpc<T extends Record<string, RpcFn>> {
       this.channel.off(key);
     }
     this.registeredHandlerEvents.clear();
+
+    for (const event of this.registeredNotifyEvents) {
+      const key = this.getNotifyEventKey(event as keyof T);
+      this.channel.off(key);
+    }
+    this.registeredNotifyEvents.clear();
   }
 
   close(): void {

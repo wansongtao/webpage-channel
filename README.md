@@ -8,12 +8,13 @@ It provides a unified event API for communication across web contexts such as ta
 
 ## Features
 
-- Lightweight API: communicate with just `on`, `once`, `emit`, and `off`.
-- TypeScript-friendly: strongly typed event names and payloads via generics.
-- Adapter extensibility: uses `BroadcastChannel` by default, falls back to `localStorage` automatically, supports custom adapters.
-- Custom serialization: replace `JSON.stringify/parse` when needed.
-- Observable errors: hooks for encode/decode and low-level message errors.
-- RPC layer: request/response and one-way notification via `WebpageChannelRpc`.
+- **Lightweight API**: communicate with just `on`, `once`, `emit`, and `off`.
+- **TypeScript-friendly**: strongly typed event names and payloads via generics.
+- **Adapter extensibility**: uses `BroadcastChannel` by default, falls back to `localStorage` automatically; swap in `PostMessageAdapter` for iframe/popup communication or bring your own.
+- **Custom serialization**: replace the default `JSON.stringify/parse` with any encoder/decoder.
+- **Observable errors**: hooks for encode/decode errors and low-level `messageerror` events.
+- **RPC layer**: typed request/response and one-way notification via `WebpageChannelRpc` or the `createRpcChannel` factory.
+- **Structured error handling**: `request()` always resolves to a `[ChannelError] | [undefined, result]` tuple — no uncaught rejections, with `err.name` distinguishing timeout, abort, emit, and handler errors.
 
 ## Installation
 
@@ -172,11 +173,17 @@ const rpcB = new WebpageChannelRpc<Api>(channelB);
 `request` always resolves — never rejects. The result is a discriminated tuple:
 
 ```ts
+import { ChannelError } from 'webpage-channel';
+
 const [err, result] = await rpc.request('add', { a: 1, b: 2 });
 
 if (err) {
-	// timeout, emit failure, remote handler threw, or AbortSignal fired
-	console.error(err.message);
+	// err is a ChannelError; inspect err.name to identify the cause:
+	//   'TimeoutError'  — no response within the timeout window
+	//   'AbortError'    — AbortSignal was triggered
+	//   'EmitError'     — failed to send the message (channel closed)
+	//   'Error'         — remote handler threw
+	console.error(err.name, err.message);
 } else {
 	console.log(result); // typed as the handler's return type
 }
@@ -191,7 +198,7 @@ Send a request and wait for the response.
 - `timeout` — per-call override in ms; defaults to the instance-level timeout (default `5000`).
 - `signal` — an `AbortSignal` to cancel the request externally.
 
-Returns `Promise<[Error] | [undefined, result]>`.
+Returns `Promise<[ChannelError] | [undefined, result]>`.
 
 ```ts
 // with a custom timeout
@@ -269,6 +276,34 @@ const rpc = new WebpageChannelRpc<Api>(channel, {
 	generateUniqueId: () => myUuid(), // custom request ID generator
 });
 ```
+
+### Error Types
+
+`ChannelError` extends the built-in `Error` and is returned in the failure tuple of `request()`. Its `name` property identifies the cause:
+
+| `err.name` | Cause |
+|---|---|
+| `'TimeoutError'` | No response received within the timeout window |
+| `'AbortError'` | An `AbortSignal` was triggered before a response arrived |
+| `'EmitError'` | The underlying channel failed to send (e.g. channel was closed) |
+| `'Error'` | The remote handler threw an exception |
+
+`ChannelError` and the `ErrorName` type alias are both exported from the package:
+
+```ts
+import { ChannelError, type ErrorName } from 'webpage-channel';
+
+function handleRpcError(err: ChannelError) {
+	switch (err.name) {
+		case 'TimeoutError': /* retry or surface timeout UI */ break;
+		case 'AbortError':  /* request was cancelled */ break;
+		case 'EmitError':   /* channel unavailable */ break;
+		case 'Error':       /* handler threw */ break;
+	}
+}
+```
+
+> **Note:** errors thrown inside a `response()` handler are always serialized with `name: 'Error'`. The original error type (e.g. `TypeError`) is not preserved across the message boundary.
 
 ## Adapter Extension
 

@@ -8,12 +8,13 @@
 
 ## 特性
 
-- 轻量易用：`on`、`once`、`emit`、`off` 即可完成事件收发。
-- TypeScript 友好：通过泛型约束事件名和事件数据类型。
-- 可扩展适配器：默认 `BroadcastChannel`，不支持时自动降级到 `localStorage`，可自定义适配器。
-- 可自定义序列化：支持替换 `JSON.stringify/parse`。
-- 错误可观察：提供消息编解码错误与底层消息错误回调。
-- RPC 层：通过 `WebpageChannelRpc` 支持请求/响应与单向通知。
+- **轻量易用**：`on`、`once`、`emit`、`off` 即可完成事件收发。
+- **TypeScript 友好**：通过泛型约束事件名和事件数据类型。
+- **可扩展适配器**：默认 `BroadcastChannel`，不支持时自动降级到 `localStorage`；也可使用 `PostMessageAdapter` 实现 iframe/弹窗通信，或自行实现适配器。
+- **可自定义序列化**：支持替换默认的 `JSON.stringify/parse`。
+- **错误可观察**：提供消息编解码错误与底层 `messageerror` 事件回调。
+- **RPC 层**：通过 `WebpageChannelRpc` 或 `createRpcChannel` 工厂函数支持类型化请求/响应与单向通知。
+- **结构化错误处理**：`request()` 始终 resolve 为 `[ChannelError] | [undefined, result]` 元组，无未捕获的 reject；通过 `err.name` 区分超时、中止、发送失败与 handler 异常。
 
 ## 安装
 
@@ -172,11 +173,17 @@ const rpcB = new WebpageChannelRpc<Api>(channelB);
 `request` 始终 resolve，永不 reject。结果为可判别的元组：
 
 ```ts
+import { ChannelError } from 'webpage-channel';
+
 const [err, result] = await rpc.request('add', { a: 1, b: 2 });
 
 if (err) {
-	// 超时、发送失败、远端 handler 抛错或 AbortSignal 触发
-	console.error(err.message);
+	// err 是 ChannelError 实例，通过 err.name 可判断错误类型：
+	//   'TimeoutError'  — 超时未收到响应
+	//   'AbortError'    — AbortSignal 被触发
+	//   'EmitError'     — 消息发送失败（如通道已关闭）
+	//   'Error'         — 远端 handler 抛出了异常
+	console.error(err.name, err.message);
 } else {
 	console.log(result); // 类型为 handler 的返回类型
 }
@@ -191,7 +198,7 @@ if (err) {
 - `timeout` — 单次调用超时时间（ms），覆盖实例级默认值（默认 `5000`）。
 - `signal` — 可选 `AbortSignal`，用于外部主动取消请求。
 
-返回 `Promise<[Error] | [undefined, result]>`。
+返回 `Promise<[ChannelError] | [undefined, result]>`。
 
 ```ts
 // 自定义超时
@@ -269,6 +276,34 @@ const rpc = new WebpageChannelRpc<Api>(channel, {
 	generateUniqueId: () => myUuid(), // 自定义请求 ID 生成函数
 });
 ```
+
+### 错误类型
+
+`ChannelError` 继承自内置 `Error`，是 `request()` 失败元组中返回的错误类型。通过 `name` 属性可判断错误来源：
+
+| `err.name` | 含义 |
+|---|---|
+| `'TimeoutError'` | 超时未收到响应 |
+| `'AbortError'` | `AbortSignal` 被触发，请求在收到响应前被取消 |
+| `'EmitError'` | 底层通道发送失败（如通道已关闭） |
+| `'Error'` | 远端 handler 抛出了异常 |
+
+`ChannelError` 和 `ErrorName` 类型别名均从包入口导出：
+
+```ts
+import { ChannelError, type ErrorName } from 'webpage-channel';
+
+function handleRpcError(err: ChannelError) {
+	switch (err.name) {
+		case 'TimeoutError': /* 重试或显示超时提示 */ break;
+		case 'AbortError':  /* 请求已被主动取消 */ break;
+		case 'EmitError':   /* 通道不可用 */ break;
+		case 'Error':       /* handler 抛出了异常 */ break;
+	}
+}
+```
+
+> **注意：** `response()` handler 内部抛出的异常，序列化时 `name` 统一为 `'Error'`，原始错误类型（如 `TypeError`）不会跨消息边界传递。
 
 ## 适配器扩展
 

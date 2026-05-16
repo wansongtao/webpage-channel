@@ -1,4 +1,6 @@
 export { default as WebpageChannel } from './core/webpage-channel';
+export { ChannelError } from './core/channel-error';
+export type { ErrorName } from './core/channel-error';
 export { default as BroadcastChannelAdapter } from './core/broadcast-channel-adapter';
 export { default as LocalStorageAdapter } from './core/localstorage-adapter';
 export { default as PostMessageAdapter } from './core/postmessage-adapter';

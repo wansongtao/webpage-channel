@@ -7,5 +7,19 @@ export const isSupportLocalStorage = (): boolean => {
 };
 
 export const isSupportPostMessage = (): boolean => {
-  return typeof window !== 'undefined' && typeof window.postMessage === 'function';
+  return (
+    typeof window !== 'undefined' && typeof window.postMessage === 'function'
+  );
+};
+
+export const generateLocalId = (): string => {
+  if (
+    typeof crypto !== 'undefined' &&
+    typeof crypto.randomUUID === 'function'
+  ) {
+    return crypto.randomUUID();
+  }
+
+  // fallback for older environments
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
 };

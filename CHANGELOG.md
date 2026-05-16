@@ -6,6 +6,31 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-05-16
+
+### Added
+
+- Added `WebpageChannelRpc<T>` class providing a request/response and one-way notification RPC layer on top of `WebpageChannel`.
+  - `request(event, payload, timeout?, signal?)` — sends a typed request and returns `[Error, undefined] | [null, Result]`. Supports per-call timeout and `AbortSignal` for external cancellation.
+  - `response(event, handler)` — registers a handler for incoming requests; returns a cancel function.
+  - `notify(event, payload)` — sends a one-way notification (no reply expected).
+  - `onNotify(event, handler)` — registers a notification listener; returns a cancel function.
+  - `off(event)` — unregisters the response handler and cancels all pending outgoing requests for that event.
+  - `offNotify(event)` — unregisters the notification listener for an event.
+  - `clear()` — unregisters all handlers and rejects all pending requests.
+  - `close()` — calls `clear()` then closes the underlying `WebpageChannel`.
+- Added `createRpcChannel<T>(channelName, options?, adapter?)` factory function that creates a `WebpageChannelRpc` without manually constructing a `WebpageChannel`.
+- Added `toAbortError(reason)` utility function to `src/utils/index.ts`.
+- Added `RpcOptions` and `RpcFn` types to the public type declarations.
+- Exported `WebpageChannelRpc`, `createRpcChannel`, and `RpcOptions` from the package entry point.
+- Added unit tests for `WebpageChannelRpc` under `test/core/webpage-channel-rpc.spec.ts` (33 tests).
+- Added unit tests for `createRpcChannel` under `test/core/create-rpc-channel.spec.ts` (5 tests).
+- Added `toAbortError` tests to `test/utils/utils.spec.ts` (6 tests).
+
+### Documentation
+
+- Updated `README.md` and `README.zh-CN.md` with a full RPC section covering Quick Start, return value convention, all RPC API methods, and RPC options.
+
 ## [1.1.0] - 2026-04-21
 
 ### Added

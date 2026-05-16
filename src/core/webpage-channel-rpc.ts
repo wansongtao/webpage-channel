@@ -8,12 +8,13 @@ import type {
 } from 'src/types';
 
 import WebpageChannel from './webpage-channel';
+import { generateLocalId } from 'src/utils';
 
 export default class WebpageChannelRpc<T extends Record<string, RpcFn>> {
   private channel: WebpageChannel<any>;
   private options: RpcOptions = {
     timeout: 5000,
-    generateUniqueId: this.generateLocalId
+    generateUniqueId: generateLocalId
   };
 
   constructor(channel: WebpageChannel<any>, options?: Partial<RpcOptions>) {
@@ -24,10 +25,6 @@ export default class WebpageChannelRpc<T extends Record<string, RpcFn>> {
     if (options?.generateUniqueId) {
       this.options.generateUniqueId = options.generateUniqueId;
     }
-  }
-
-  private generateLocalId(): string {
-    return `${Date.now()}-${Math.random().toString(36)}-${Math.random().toString(36).slice(2)}`;
   }
 
   private getRequestEventKey<K extends keyof T>(event: K): string {
@@ -41,26 +38,27 @@ export default class WebpageChannelRpc<T extends Record<string, RpcFn>> {
   request<K extends keyof T>(
     event: K,
     payload: RequestPayload<T[K]>,
-    timeout = this.options.timeout,
-    generateUniqueId = this.options.generateUniqueId
+    timeout?: number
   ): Promise<[Error] | [undefined, ResponsePayload<T[K]>]> {
+    const { timeout: defaultTimeout, generateUniqueId } = this.options;
+    const resolvedTimeout = timeout ?? defaultTimeout;
     const id = `req:${String(event)}:${generateUniqueId()}`;
 
     return new Promise((resolve) => {
       const timer = setTimeout(() => {
         this.channel.off(this.getResponseEventKey(id));
         resolve([new Error(`Request timed out for event: ${String(event)}`)]);
-      }, timeout);
+      }, resolvedTimeout);
 
       this.channel.once(
         this.getResponseEventKey(id),
         ({ result, error }: ResponseResult<T[K]>) => {
-          timer && clearTimeout(timer);
+          clearTimeout(timer);
 
-          if (result) {
-            resolve([undefined, result]);
+          if (error) {
+            resolve([error]);
           } else {
-            resolve([error!]);
+            resolve([undefined, result!]);
           }
         }
       );
@@ -68,14 +66,17 @@ export default class WebpageChannelRpc<T extends Record<string, RpcFn>> {
       const key = this.getRequestEventKey(event);
       const res = this.channel.emit(key, { id, payload });
       if (!res) {
-        timer && clearTimeout(timer);
+        clearTimeout(timer);
         this.channel.off(this.getResponseEventKey(id));
         resolve([new Error(`Emit failed for event: ${String(event)}`)]);
-        return;
       }
     });
   }
 
+  /**
+   * Register a handler for the given RPC event.
+   * If a handler is already registered for the same event, it will be replaced silently.
+   */
   response<K extends keyof T>(
     event: K,
     handler: (
@@ -102,28 +103,10 @@ export default class WebpageChannelRpc<T extends Record<string, RpcFn>> {
   }
 
   clear(): void {
-    this.channel.clear()
+    this.channel.clear();
+  }
+
+  close(): void {
+    this.channel.close();
   }
 }
-
-// example
-type RpcEvents = {
-  getUser: (p: { id: number }) => { name: string };
-  fetchUser: (p: { id: number }) => Promise<{ name: string }>;
-};
-
-const rpc = new WebpageChannelRpc<RpcEvents>(new WebpageChannel('test'));
-
-rpc.request('getUser', { id: 1 }).then(([error, res]) => {
-  console.log('receive: ', error, res?.name);
-});
-rpc.response('getUser', (payload) => {
-  return { name: payload.id + '' };
-});
-
-rpc.request('fetchUser', { id: 2 }).then(([err, res]) => {
-  console.log('receive: ', err, res?.name);
-});
-rpc.response('fetchUser', async (payload) => {
-  return { name: payload.id + '' };
-});

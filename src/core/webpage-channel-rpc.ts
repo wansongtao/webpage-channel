@@ -12,6 +12,31 @@ import type {
 import WebpageChannel from './webpage-channel';
 import { generateLocalId, toAbortError } from 'src/utils';
 
+/**
+ * RPC layer built on top of {@link WebpageChannel}.
+ *
+ * Provides request/response, one-way notification, and lifecycle management
+ * over any `WebpageChannel` instance.
+ *
+ * @typeParam T - A map of RPC method names to their function signatures.
+ *   Each function's parameter type becomes the request payload, and its
+ *   return type becomes the response payload.
+ *
+ * @example
+ * ```ts
+ * type Api = {
+ *   add: (payload: { a: number; b: number }) => number;
+ *   log: (payload: { text: string }) => void;
+ * };
+ *
+ * const rpcA = new WebpageChannelRpc<Api>(channelA);
+ * const rpcB = new WebpageChannelRpc<Api>(channelB);
+ *
+ * rpcA.response('add', ({ a, b }) => a + b);
+ *
+ * const [err, result] = await rpcB.request('add', { a: 1, b: 2 });
+ * ```
+ */
 export default class WebpageChannelRpc<T extends Record<string, RpcFn>> {
   private channel: WebpageChannel<any>;
   private pendingRequests = new Map<string, PendingRequest>();
@@ -22,6 +47,10 @@ export default class WebpageChannelRpc<T extends Record<string, RpcFn>> {
     generateUniqueId: generateLocalId
   };
 
+  /**
+   * @param channel - The underlying `WebpageChannel` used for transport.
+   * @param options - Optional overrides for default timeout and ID generation.
+   */
   constructor(channel: WebpageChannel<any>, options?: Partial<RpcOptions>) {
     this.channel = channel;
     if (options?.timeout !== undefined) {
@@ -44,6 +73,20 @@ export default class WebpageChannelRpc<T extends Record<string, RpcFn>> {
     return `@notify:_${String(event)}_`;
   }
 
+  /**
+   * Send a request and wait for the remote handler's response.
+   *
+   * The returned promise always resolves (never rejects) as a discriminated
+   * tuple:
+   * - `[Error]` — request failed (timeout, emit failure, handler error, or abort)
+   * - `[undefined, result]` — request succeeded
+   *
+   * @param event - The RPC method name to call.
+   * @param payload - Argument passed to the remote handler.
+   * @param timeout - Per-request timeout in ms. Defaults to the instance-level timeout.
+   * @param signal - Optional `AbortSignal` to cancel the request externally.
+   * @returns A promise that resolves to `[Error]` or `[undefined, result]`.
+   */
   request<K extends keyof T>(
     event: K,
     payload: RequestPayload<T[K]>,
@@ -115,8 +158,15 @@ export default class WebpageChannelRpc<T extends Record<string, RpcFn>> {
 
   /**
    * Register a handler for the given RPC event.
-   * If a handler is already registered for the same event, it will be replaced silently.
-   * Returns a function that unregisters the handler when called.
+   *
+   * If a handler is already registered for the same event it will be replaced
+   * silently. Any pending requests targeting the replaced handler are cancelled.
+   *
+   * @param event - The RPC method name to handle.
+   * @param handler - Synchronous or async function that processes the request
+   *   and returns the response. Thrown errors are serialised and forwarded to
+   *   the caller as an `[Error]` tuple.
+   * @returns A function that unregisters this handler when called.
    */
   response<K extends keyof T>(
     event: K,
@@ -142,11 +192,29 @@ export default class WebpageChannelRpc<T extends Record<string, RpcFn>> {
     return () => this.off(event);
   }
 
+  /**
+   * Send a one-way notification — fire-and-forget, no response is expected.
+   *
+   * @param event - The notification name.
+   * @param payload - Data to deliver to the remote listener.
+   * @returns `true` if the message was emitted successfully, `false` otherwise
+   *   (e.g. the channel has been closed).
+   */
   notify<K extends keyof T>(event: K, payload: RequestPayload<T[K]>): boolean {
     const key = this.getNotifyEventKey(event);
     return this.channel.emit(key, payload);
   }
 
+  /**
+   * Register a listener for incoming one-way notifications.
+   *
+   * If a listener is already registered for the same event it will be replaced
+   * silently.
+   *
+   * @param event - The notification name to listen for.
+   * @param handler - Callback invoked with the notification payload.
+   * @returns A function that unregisters this listener when called.
+   */
   onNotify<K extends keyof T>(
     event: K,
     handler: (payload: RequestPayload<T[K]>) => void
@@ -159,12 +227,23 @@ export default class WebpageChannelRpc<T extends Record<string, RpcFn>> {
     return () => this.offNotify(event);
   }
 
+  /**
+   * Unregister the notification listener for the given event.
+   *
+   * @param event - The notification name to stop listening for.
+   */
   offNotify<K extends keyof T>(event: K): void {
     const key = this.getNotifyEventKey(event);
     this.channel.off(key);
     this.registeredNotifyEvents.delete(event);
   }
 
+  /**
+   * Unregister the response handler for the given event and cancel any
+   * outgoing requests that are still waiting for a response to that event.
+   *
+   * @param event - The RPC method name to deregister.
+   */
   off<K extends keyof T>(event: K): void {
     const pending = [...this.pendingRequests.entries()].filter(
       ([, { event: e }]) => e === event
@@ -182,6 +261,12 @@ export default class WebpageChannelRpc<T extends Record<string, RpcFn>> {
     this.registeredHandlerEvents.delete(event);
   }
 
+  /**
+   * Cancel all pending requests and remove all response handlers and
+   * notification listeners.
+   *
+   * Does **not** close the underlying channel — use {@link close} for that.
+   */
   clear(): void {
     const pending = [...this.pendingRequests.values()];
     for (const { cancel } of pending) {
@@ -201,6 +286,12 @@ export default class WebpageChannelRpc<T extends Record<string, RpcFn>> {
     this.registeredNotifyEvents.clear();
   }
 
+  /**
+   * Cancel all pending requests, remove all handlers, and close the
+   * underlying channel.
+   *
+   * After this call the instance must not be used.
+   */
   close(): void {
     this.clear();
     this.channel.close();

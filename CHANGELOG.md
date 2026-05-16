@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-05-16
+
 ### Added
 
 - Added `ChannelError` class that extends `Error` with a `name` property typed as `'TimeoutError' | 'AbortError' | 'EmitError' | 'Error'`. Used as the error value in all `WebpageChannelRpc.request()` failure tuples.
@@ -18,6 +20,12 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - `WebpageChannelRpc.request()` now returns `[ChannelError]` on failure instead of `[Error]`, allowing callers to inspect `err.name` to distinguish error kinds (`'TimeoutError'`, `'AbortError'`, `'EmitError'`, `'Error'`).
 - `WebpageChannelRpc.request()`: aborting via `AbortSignal` now always resolves with `ChannelError('AbortError', ...)` regardless of the abort reason; `signal.reason` is no longer forwarded.
 - `WebpageChannelRpc.request()`: errors thrown inside response handlers are always serialized with `name: 'Error'`; the original error type name is not preserved across the message boundary.
+
+### Documentation
+
+- Updated `README.md` and `README.zh-CN.md` with `ChannelError` / `ErrorName` API, error type table, `switch` usage example, and handler-error serialization note.
+- Rewrote the Features section in both READMEs to reflect the full current feature set.
+- Updated `request()` return type annotation from `Promise<[Error] | ...>` to `Promise<[ChannelError] | ...>` in both READMEs.
 
 ## [1.2.0] - 2026-05-16
 

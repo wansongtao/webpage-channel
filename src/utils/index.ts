@@ -23,8 +23,3 @@ export const generateLocalId = (): string => {
   // fallback for older environments
   return `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
 };
-
-export const toAbortError = (reason: unknown): Error => {
-  if (reason instanceof Error) return reason;
-  return new Error(reason !== undefined ? String(reason) : 'Request aborted');
-}

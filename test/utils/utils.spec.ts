@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { generateLocalId, isSupportBroadcastChannel, isSupportLocalStorage, isSupportPostMessage, toAbortError } from '../../src/utils';
+import { generateLocalId, isSupportBroadcastChannel, isSupportLocalStorage, isSupportPostMessage } from '../../src/utils';
 
 describe('generateLocalId', () => {
   afterEach(() => {
@@ -81,41 +81,5 @@ describe('isSupportPostMessage', () => {
   it('should return false when window is undefined', () => {
     vi.stubGlobal('window', undefined);
     expect(isSupportPostMessage()).toBe(false);
-  });
-});
-
-describe('toAbortError', () => {
-  it('should return the same Error instance when reason is an Error', () => {
-    const err = new TypeError('already an error');
-    expect(toAbortError(err)).toBe(err);
-  });
-
-  it('should return the same Error instance for any Error subclass', () => {
-    const err = new RangeError('range');
-    expect(toAbortError(err)).toBe(err);
-  });
-
-  it('should wrap a string reason in a new Error', () => {
-    const result = toAbortError('cancelled');
-    expect(result).toBeInstanceOf(Error);
-    expect(result.message).toBe('cancelled');
-  });
-
-  it('should wrap a numeric reason in a new Error', () => {
-    const result = toAbortError(42);
-    expect(result).toBeInstanceOf(Error);
-    expect(result.message).toBe('42');
-  });
-
-  it('should use the default message when reason is undefined', () => {
-    const result = toAbortError(undefined);
-    expect(result).toBeInstanceOf(Error);
-    expect(result.message).toBe('Request aborted');
-  });
-
-  it('should use the default message when reason is null', () => {
-    const result = toAbortError(null);
-    expect(result).toBeInstanceOf(Error);
-    expect(result.message).toBe('null');
   });
 });

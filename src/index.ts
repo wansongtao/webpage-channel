@@ -3,4 +3,5 @@ export { default as BroadcastChannelAdapter } from './core/broadcast-channel-ada
 export { default as LocalStorageAdapter } from './core/localstorage-adapter';
 export { default as PostMessageAdapter } from './core/postmessage-adapter';
 export { default as EventBus } from './core/event-bus';
+export { default as WebpageChannelRpc } from './core/webpage-channel-rpc';
 export * from './types/index.d';

@@ -1,3 +1,5 @@
+import { ChannelError, ErrorName } from 'src/core/channel-error';
+
 export interface IWebpageChannelAdapter {
   postMessage(message: string): void;
   onMessage(callback: (message: string) => void): void;
@@ -6,7 +8,7 @@ export interface IWebpageChannelAdapter {
 }
 
 export interface IChannelData<T = any, C = string> {
-  channelName: string
+  channelName: string;
   event?: C;
   data?: T;
 }
@@ -22,11 +24,11 @@ export type RequestParams<F extends RpcFn> = {
 };
 export type SerializedError = {
   message: string;
-  name: string;
+  name: ErrorName;
 };
 export type PendingRequest = {
   event: PropertyKey;
-  cancel: (err: Error) => void;
+  cancel: (err: ChannelError) => void;
 };
 export type ResponseResult<F extends RpcFn> = {
   result?: ResponsePayload<F>;

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { IWebpageChannelAdapter } from '../../src/types';
+import { ChannelError } from '../../src/core/channel-error';
 import WebpageChannel from '../../src/core/webpage-channel';
 import WebpageChannelRpc from '../../src/core/webpage-channel-rpc';
 
@@ -134,7 +135,7 @@ describe('WebpageChannelRpc', () => {
       expect((err as Error).message).toBe('unexpected string');
     });
 
-    it('should preserve error name from the handler', async () => {
+    it('should serialize handler errors with name "Error" regardless of original type', async () => {
       server.response('fail', () => {
         const e = new TypeError('type mismatch');
         throw e;
@@ -142,8 +143,9 @@ describe('WebpageChannelRpc', () => {
 
       const [err] = await client.request('fail', { msg: '' });
 
-      expect((err as Error).name).toBe('TypeError');
-      expect((err as Error).message).toBe('type mismatch');
+      expect(err).toBeInstanceOf(ChannelError);
+      expect((err as ChannelError).name).toBe('Error');
+      expect((err as ChannelError).message).toBe('type mismatch');
     });
 
     it('should time out when no handler responds', async () => {
@@ -194,25 +196,28 @@ describe('WebpageChannelRpc', () => {
       expect((err as Error).message).toMatch(/aborted/i);
     });
 
-    it('should use the abort reason Error when provided', async () => {
+    it('should return a ChannelError with AbortError name when signal is aborted with a reason', async () => {
       const controller = new AbortController();
-      const reason = new TypeError('custom abort reason');
       const promise = client.request('add', { a: 1, b: 2 }, 5000, controller.signal);
-      controller.abort(reason);
+      controller.abort(new TypeError('custom abort reason'));
 
       const [err] = await promise;
 
-      expect(err).toBe(reason);
+      expect(err).toBeInstanceOf(ChannelError);
+      expect((err as ChannelError).name).toBe('AbortError');
+      expect((err as ChannelError).message).toMatch(/aborted/i);
     });
 
-    it('should use a string abort reason wrapped in Error', async () => {
+    it('should return a ChannelError with AbortError name when signal is aborted with a string reason', async () => {
       const controller = new AbortController();
       const promise = client.request('add', { a: 1, b: 2 }, 5000, controller.signal);
       controller.abort('cancelled by user');
 
       const [err] = await promise;
 
-      expect((err as Error).message).toBe('cancelled by user');
+      expect(err).toBeInstanceOf(ChannelError);
+      expect((err as ChannelError).name).toBe('AbortError');
+      expect((err as ChannelError).message).toMatch(/aborted/i);
     });
 
     it('should replace the handler when response() is called again for the same event', async () => {

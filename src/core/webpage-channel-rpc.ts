@@ -10,7 +10,8 @@ import type {
 } from 'src/types';
 
 import WebpageChannel from './webpage-channel';
-import { generateLocalId, toAbortError } from 'src/utils';
+import { generateLocalId } from 'src/utils';
+import { ChannelError } from './channel-error';
 
 /**
  * RPC layer built on top of {@link WebpageChannel}.
@@ -78,28 +79,33 @@ export default class WebpageChannelRpc<T extends Record<string, RpcFn>> {
    *
    * The returned promise always resolves (never rejects) as a discriminated
    * tuple:
-   * - `[Error]` — request failed (timeout, emit failure, handler error, or abort)
+   * - `[ChannelError]` — request failed (timeout, emit failure, handler error, or abort)
    * - `[undefined, result]` — request succeeded
    *
    * @param event - The RPC method name to call.
    * @param payload - Argument passed to the remote handler.
    * @param timeout - Per-request timeout in ms. Defaults to the instance-level timeout.
    * @param signal - Optional `AbortSignal` to cancel the request externally.
-   * @returns A promise that resolves to `[Error]` or `[undefined, result]`.
+   * @returns A promise that resolves to `[ChannelError]` or `[undefined, result]`.
    */
   request<K extends keyof T>(
     event: K,
     payload: RequestPayload<T[K]>,
     timeout?: number,
     signal?: AbortSignal
-  ): Promise<[Error] | [undefined, ResponsePayload<T[K]>]> {
+  ): Promise<[ChannelError] | [undefined, ResponsePayload<T[K]>]> {
     const { timeout: defaultTimeout, generateUniqueId } = this.options;
     const resolvedTimeout = timeout ?? defaultTimeout;
     const id = `req:${String(event)}:${generateUniqueId()}`;
 
     return new Promise((resolve) => {
       if (signal?.aborted) {
-        resolve([toAbortError(signal.reason)]);
+        resolve([
+          new ChannelError(
+            'AbortError',
+            `Request aborted before sending: ${String(event)}`
+          )
+        ]);
         return;
       }
 
@@ -114,12 +120,17 @@ export default class WebpageChannelRpc<T extends Record<string, RpcFn>> {
 
       const onAbort = () => {
         cleanup();
-        resolve([toAbortError(signal!.reason)]);
+        resolve([
+          new ChannelError(
+            'AbortError',
+            `Request aborted for event: ${String(event)}`
+          )
+        ]);
       };
 
       this.pendingRequests.set(id, {
         event,
-        cancel: (err: Error) => {
+        cancel: (err: ChannelError) => {
           cleanup();
           resolve([err]);
         }
@@ -127,7 +138,11 @@ export default class WebpageChannelRpc<T extends Record<string, RpcFn>> {
 
       timer = setTimeout(() => {
         cleanup();
-        resolve([new Error(`Request timed out for event: ${String(event)}`)]);
+        const err = new ChannelError(
+          'TimeoutError',
+          `Request timed out for event: ${String(event)}`
+        );
+        resolve([err]);
       }, resolvedTimeout);
 
       signal?.addEventListener('abort', onAbort, { once: true });
@@ -138,8 +153,7 @@ export default class WebpageChannelRpc<T extends Record<string, RpcFn>> {
           cleanup();
 
           if (error) {
-            const err = new Error(error.message);
-            err.name = error.name;
+            const err = new ChannelError(error.name, error.message);
             resolve([err]);
           } else {
             resolve([undefined, result!]);
@@ -151,7 +165,12 @@ export default class WebpageChannelRpc<T extends Record<string, RpcFn>> {
       const res = this.channel.emit(key, { id, payload });
       if (!res) {
         cleanup();
-        resolve([new Error(`Emit failed for event: ${String(event)}`)]);
+        resolve([
+          new ChannelError(
+            'EmitError',
+            `Emit failed for event: ${String(event)}`
+          )
+        ]);
       }
     });
   }
@@ -165,7 +184,7 @@ export default class WebpageChannelRpc<T extends Record<string, RpcFn>> {
    * @param event - The RPC method name to handle.
    * @param handler - Synchronous or async function that processes the request
    *   and returns the response. Thrown errors are serialised and forwarded to
-   *   the caller as an `[Error]` tuple.
+   *   the caller as an `[ChannelError]` tuple.
    * @returns A function that unregisters this handler when called.
    */
   response<K extends keyof T>(
@@ -183,7 +202,10 @@ export default class WebpageChannelRpc<T extends Record<string, RpcFn>> {
         this.channel.emit(this.getResponseEventKey(id), { result });
       } catch (e: unknown) {
         const raw = e instanceof Error ? e : new Error(String(e));
-        const error: SerializedError = { message: raw.message, name: raw.name };
+        const error: SerializedError = {
+          message: raw.message,
+          name: 'Error'
+        };
         this.channel.emit(this.getResponseEventKey(id), { error });
       }
     });
@@ -250,8 +272,9 @@ export default class WebpageChannelRpc<T extends Record<string, RpcFn>> {
     );
     for (const [, { cancel }] of pending) {
       cancel(
-        new Error(
-          `Request cancelled: handler for "${String(event)}" was removed`
+        new ChannelError(
+          'EmitError',
+          `Request cancelled due to handler removal for event: ${String(event)}`
         )
       );
     }
@@ -270,7 +293,7 @@ export default class WebpageChannelRpc<T extends Record<string, RpcFn>> {
   clear(): void {
     const pending = [...this.pendingRequests.values()];
     for (const { cancel } of pending) {
-      cancel(new Error('RPC handlers were cleared'));
+      cancel(new ChannelError('EmitError', 'RPC handlers were cleared'));
     }
 
     for (const event of this.registeredHandlerEvents) {

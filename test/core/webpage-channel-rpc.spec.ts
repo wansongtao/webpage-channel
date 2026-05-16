@@ -321,6 +321,22 @@ describe('WebpageChannelRpc', () => {
       expect(handler).not.toHaveBeenCalled();
     });
 
+    it('should return a cancel function that stops receiving notifications', () => {
+      const handler = vi.fn();
+      const cancel = server.onNotify('log', handler);
+      cancel();
+
+      client.notify('log', { text: 'silent' });
+
+      expect(handler).not.toHaveBeenCalled();
+    });
+
+    it('should return a cancel function that is idempotent', () => {
+      const cancel = server.onNotify('log', vi.fn());
+      cancel();
+      expect(() => cancel()).not.toThrow();
+    });
+
     it('should be independent from request/response events with the same key name', async () => {
       const notifyHandler = vi.fn();
       server.onNotify('add', notifyHandler);
@@ -380,6 +396,26 @@ describe('WebpageChannelRpc', () => {
       server.close();
 
       expect(serverAdapter.close).toHaveBeenCalledTimes(1);
+    });
+
+    it('should cancel all pending requests before closing', async () => {
+      const promise = client.request('add', { a: 1, b: 2 }, 5000);
+      client.close();
+
+      const [err] = await promise;
+
+      expect(err).toBeInstanceOf(Error);
+      expect((err as Error).message).toMatch(/cleared/i);
+    });
+
+    it('should stop delivering notifications after close', () => {
+      const handler = vi.fn();
+      server.onNotify('log', handler);
+      server.close();
+
+      client.notify('log', { text: 'after close' });
+
+      expect(handler).not.toHaveBeenCalled();
     });
   });
 });

@@ -173,6 +173,48 @@ describe('WebpageChannelRpc', () => {
       expect(err).toBeInstanceOf(Error);
     });
 
+    it('should abort immediately when signal is already aborted', async () => {
+      const controller = new AbortController();
+      controller.abort();
+
+      const [err] = await client.request('add', { a: 1, b: 2 }, undefined, controller.signal);
+
+      expect(err).toBeInstanceOf(Error);
+      expect((err as Error).message).toMatch(/aborted/i);
+    });
+
+    it('should abort a pending request when signal is aborted', async () => {
+      const controller = new AbortController();
+      const promise = client.request('add', { a: 1, b: 2 }, 5000, controller.signal);
+      controller.abort();
+
+      const [err] = await promise;
+
+      expect(err).toBeInstanceOf(Error);
+      expect((err as Error).message).toMatch(/aborted/i);
+    });
+
+    it('should use the abort reason Error when provided', async () => {
+      const controller = new AbortController();
+      const reason = new TypeError('custom abort reason');
+      const promise = client.request('add', { a: 1, b: 2 }, 5000, controller.signal);
+      controller.abort(reason);
+
+      const [err] = await promise;
+
+      expect(err).toBe(reason);
+    });
+
+    it('should use a string abort reason wrapped in Error', async () => {
+      const controller = new AbortController();
+      const promise = client.request('add', { a: 1, b: 2 }, 5000, controller.signal);
+      controller.abort('cancelled by user');
+
+      const [err] = await promise;
+
+      expect((err as Error).message).toBe('cancelled by user');
+    });
+
     it('should replace the handler when response() is called again for the same event', async () => {
       server.response('add', () => 0);
       server.response('add', ({ a, b }) => a + b);
@@ -180,6 +222,22 @@ describe('WebpageChannelRpc', () => {
       const [, result] = await client.request('add', { a: 10, b: 5 });
 
       expect(result).toBe(15);
+    });
+
+    it('should return a cancel function that unregisters the handler', async () => {
+      const cancel = server.response('add', ({ a, b }) => a + b);
+      cancel();
+
+      const [err] = await client.request('add', { a: 1, b: 2 }, 50);
+
+      expect(err).toBeInstanceOf(Error);
+      expect((err as Error).message).toMatch(/timed out/i);
+    });
+
+    it('should return a cancel function that is idempotent', async () => {
+      const cancel = server.response('add', ({ a, b }) => a + b);
+      cancel();
+      expect(() => cancel()).not.toThrow();
     });
   });
 

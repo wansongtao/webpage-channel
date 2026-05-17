@@ -25,7 +25,9 @@ export default class PostMessageAdapter implements IWebpageChannelAdapter {
     }
 
     this.messageHandler = (e) => {
-      if (e.origin === this.targetOrigin && e.source === this.targetWindow) {
+      const originMatches =
+        this.targetOrigin === '*' || e.origin === this.targetOrigin;
+      if (originMatches && e.source === this.targetWindow) {
         callback(e.data);
       }
     };

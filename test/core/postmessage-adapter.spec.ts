@@ -19,6 +19,26 @@ describe('PostMessageAdapter', () => {
       'postMessage is not supported in this environment.'
     );
   });
+  it('should dispatch message from any origin when targetOrigin is "*"', () => {
+    const callback = vi.fn();
+    const adapter = new PostMessageAdapter(window, '*');
+
+    adapter.onMessage(callback);
+
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        data: 'wildcard',
+        origin: 'https://any-origin.test',
+        source: window
+      })
+    );
+
+    expect(callback).toHaveBeenCalledTimes(1);
+    expect(callback).toHaveBeenCalledWith('wildcard');
+
+    adapter.close();
+  });
+
   it('should call targetWindow.postMessage with message and targetOrigin', () => {
     const mockWindow = { postMessage: vi.fn() } as unknown as Window;
     const adapter = new PostMessageAdapter(mockWindow, 'https://target.test');

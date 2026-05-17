@@ -35,7 +35,28 @@ describe('LocalStorageAdapter', () => {
     expect(key).toBe(STORAGE_KEY);
     const parsed = JSON.parse(value as string);
     expect(parsed.message).toBe('hello');
-    expect(typeof parsed.timestamp).toBe('number');
+    expect(typeof parsed.timestamp).toBe('string');
+  });
+
+  it('should replace the previous listener when onMessage is called multiple times', () => {
+    const adapter = new LocalStorageAdapter(CHANNEL);
+    const first = vi.fn();
+    const second = vi.fn();
+    const removeEventListenerSpy = vi.spyOn(window, 'removeEventListener');
+
+    adapter.onMessage(first);
+    adapter.onMessage(second);
+
+    expect(removeEventListenerSpy).toHaveBeenCalledWith('storage', expect.any(Function));
+
+    const payload = JSON.stringify({ message: 'hello', timestamp: 'ts' });
+    const event = new StorageEvent('storage', { key: STORAGE_KEY, newValue: payload });
+    window.dispatchEvent(event);
+
+    expect(second).toHaveBeenCalledOnce();
+    expect(first).not.toHaveBeenCalled();
+
+    adapter.close();
   });
 
   it('should use a different timestamp each call so repeated identical messages differ', () => {

@@ -1,9 +1,10 @@
 import type { IWebpageChannelAdapter } from '../types';
-import { isSupportLocalStorage } from '../utils';
+
+import { generateLocalId, isSupportLocalStorage } from '../utils';
 
 interface IStorageMessage {
   message: string;
-  timestamp: number;
+  timestamp: string;
 }
 
 export default class LocalStorageAdapter implements IWebpageChannelAdapter {
@@ -20,11 +21,15 @@ export default class LocalStorageAdapter implements IWebpageChannelAdapter {
   postMessage(message: string) {
     // timestamp ensures the serialized value always differs between calls,
     // so the 'storage' event fires even when the message content is identical.
-    const payload: IStorageMessage = { message, timestamp: Date.now() };
+    const payload: IStorageMessage = { message, timestamp: generateLocalId() };
     localStorage.setItem(this.storageKey, JSON.stringify(payload));
   }
 
   onMessage(callback: (message: string) => void) {
+    if (this.storageHandler) {
+      window.removeEventListener('storage', this.storageHandler);
+    }
+
     this.storageHandler = (e: StorageEvent) => {
       if (e.key !== this.storageKey || e.newValue === null) return;
 

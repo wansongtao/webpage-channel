@@ -355,6 +355,7 @@ Notes:
 - A tab will **not** receive its own messages (consistent with `BroadcastChannel` behavior).
 - Each message writes to `localStorage`, which persists briefly; the key is removed when `close()` is called.
 - The stored value includes a `timestamp` field to ensure the `storage` event fires even when the same message is sent consecutively.
+- **Limitations**: `localStorage` has a ~5 MB storage quota and its write API is synchronous and blocks the main thread. This adapter is intended as a compatibility fallback for environments without `BroadcastChannel` support, and is not suited for high-frequency or large-payload messaging. For those use cases, rely on the default `BroadcastChannel` transport or supply a custom adapter.
 
 ### Using PostMessageAdapter
 

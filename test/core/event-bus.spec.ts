@@ -89,6 +89,46 @@ describe('EventBus', () => {
     expect(listener).toHaveBeenCalledWith({ value: 6 });
   });
 
+  it('should clean up the listener array when the last listener is removed via off', () => {
+    const bus = new EventBus<TestEvents>();
+    const listener = vi.fn();
+
+    bus.on('ping', listener);
+    bus.off('ping', listener);
+
+    // Internal listeners map should have no entry for 'ping'
+    expect((bus as any).listeners['ping']).toBeUndefined();
+  });
+
+  it('should do nothing when off is called with a listener on an event never registered', () => {
+    const bus = new EventBus<TestEvents>();
+    expect(() => bus.off('ping', vi.fn())).not.toThrow();
+  });
+
+  it('should do nothing when off is called with a listener not in the list', () => {
+    const bus = new EventBus<TestEvents>();
+    const registered = vi.fn();
+    const unregistered = vi.fn();
+
+    bus.on('ping', registered);
+    bus.off('ping', unregistered);
+
+    // registered listener should still be present
+    expect((bus as any).listeners['ping']).toEqual([registered]);
+  });
+
+  it('should not delete the array when off removes one of multiple listeners', () => {
+    const bus = new EventBus<TestEvents>();
+    const listenerA = vi.fn();
+    const listenerB = vi.fn();
+
+    bus.on('ping', listenerA);
+    bus.on('ping', listenerB);
+    bus.off('ping', listenerA);
+
+    expect((bus as any).listeners['ping']).toEqual([listenerB]);
+  });
+
   it('should return an unsubscribe function from on that removes the listener', () => {
     const bus = new EventBus<TestEvents>();
     const listener = vi.fn();

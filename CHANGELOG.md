@@ -6,6 +6,28 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+## [1.2.2] - 2026-05-17
+
+### Added
+
+- `WebpageChannel.on()` and `WebpageChannel.once()` now return an unsubscribe function `() => void`. Calling it removes the registered listener, equivalent to `channel.off(event, callback)`.
+- `WebpageChannel.isClosed` getter — returns `true` after `close()` has been called.
+- `EventBus.on()` and `EventBus.once()` now return an unsubscribe function `() => void`.
+
+### Changed
+
+- `WebpageChannel.on()` and `WebpageChannel.once()`: calling either method after `close()` now triggers `onError` with `"Channel is closed"` and returns a no-op unsubscribe function, consistent with the existing behavior of `emit()`.
+- `EventBus.off()`: after removing the last listener for an event, the empty array is now cleaned up from the internal listeners map, preventing unbounded memory growth over time.
+- `PostMessageAdapter.onMessage()`: origin filter now accepts messages from any origin when `targetOrigin` is `'*'`, fixing a bug where all messages were silently dropped in wildcard mode.
+- `LocalStorageAdapter.onMessage()`: calling `onMessage()` a second time now removes the previous `storage` event listener before registering the new one, preventing a listener leak.
+
+### Documentation
+
+- Updated `README.md` and `README.zh-CN.md`:
+  - `channel.on()` and `channel.once()` signatures updated to `(): () => void` with unsubscribe return value and post-close behavior described.
+  - Added `channel.isClosed: boolean` section.
+  - Quick Start "Unsubscribe and dispose" example updated to demonstrate the unsubscribe function pattern.
+
 ## [1.2.1] - 2026-05-16
 
 ### Added

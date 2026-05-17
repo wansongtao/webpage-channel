@@ -37,25 +37,6 @@ describe('BroadcastChannelAdapter', () => {
     adapter.close();
   });
 
-  it('should invoke callback with event data when a message is received', () => {
-    const adapter = new BroadcastChannelAdapter('test-bc-msg');
-    const callback = vi.fn();
-
-    adapter.onMessage(callback);
-
-    // Create another BroadcastChannel on the same name to send a message
-    const sender = new BroadcastChannel('test-bc-msg');
-    sender.postMessage('test-data');
-
-    // happy-dom dispatches synchronously or we need to trigger manually
-    // Since happy-dom may not cross-dispatch, test by directly invoking onmessage
-    // We access the internal channel's onmessage
-    // Instead, let's verify the callback wiring by triggering the onmessage handler
-    // We'll use a different approach: verify that onMessage sets the onmessage handler
-    sender.close();
-    adapter.close();
-  });
-
   it('should wire onmessage to invoke callback with e.data', () => {
     const adapter = new BroadcastChannelAdapter('test-bc-wire');
     const callback = vi.fn();

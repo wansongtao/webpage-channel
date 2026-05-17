@@ -65,11 +65,16 @@ const onToast = (payload: { message: string; type: 'success' | 'error' }) => {
 	console.log(payload.message);
 };
 
-channel.on('toast:show', onToast);
-channel.once('toast:show', (payload) => {
+// on/once both return an unsubscribe function
+const unsubscribe = channel.on('toast:show', onToast);
+const unsubscribeOnce = channel.once('toast:show', (payload) => {
 	console.log('Only once:', payload.message);
 });
-channel.off('toast:show', onToast); // remove a specific listener
+
+unsubscribe();      // remove the specific listener
+unsubscribeOnce();  // cancel before it fires (if not yet triggered)
+
+channel.off('toast:show', onToast); // equivalent — remove a specific listener
 channel.off('toast:show'); // remove all listeners of this event
 
 channel.close(); // clear listeners and close underlying channel
@@ -96,13 +101,17 @@ Creates a channel instance.
 - `deserializeMessage?: (raw) => data`
 	- Custom deserializer, default is `JSON.parse`.
 
-### `channel.on(event, callback)`
+### `channel.on(event, callback): () => void`
 
-Registers an event listener.
+Registers an event listener. Returns an unsubscribe function — call it to remove the listener.
 
-### `channel.once(event, callback)`
+> Calling `on` after `close()` triggers `onError` and returns a no-op function.
 
-Registers a one-time listener that is automatically removed after the first call.
+### `channel.once(event, callback): () => void`
+
+Registers a one-time listener that is automatically removed after the first call. Returns an unsubscribe function that can cancel the listener before it fires.
+
+> Calling `once` after `close()` triggers `onError` and returns a no-op function.
 
 ### `channel.emit(event, payload): boolean`
 
@@ -120,6 +129,10 @@ Emits an event and returns send status:
 ### `channel.clear()`
 
 Clears all listeners on the current instance.
+
+### `channel.isClosed: boolean`
+
+Returns `true` after `close()` has been called.
 
 ### `channel.close()`
 

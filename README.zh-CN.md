@@ -65,11 +65,16 @@ const onToast = (payload: { message: string; type: 'success' | 'error' }) => {
 	console.log(payload.message);
 };
 
-channel.on('toast:show', onToast);
-channel.once('toast:show', (payload) => {
+// on/once 均返回一个取消函数
+const unsubscribe = channel.on('toast:show', onToast);
+const unsubscribeOnce = channel.once('toast:show', (payload) => {
 	console.log('仅触发一次:', payload.message);
 });
-channel.off('toast:show', onToast); // 移除指定监听器
+
+unsubscribe();      // 移除该监听器
+unsubscribeOnce();  // 在触发前取消（若尚未触发）
+
+channel.off('toast:show', onToast); // 等价写法 — 移除指定监听器
 channel.off('toast:show'); // 移除该事件全部监听器
 
 channel.close(); // 清空监听并关闭底层通道
@@ -96,13 +101,17 @@ channel.close(); // 清空监听并关闭底层通道
 - `deserializeMessage?: (raw) => data`
 	- 自定义反序列化函数，默认 `JSON.parse`。
 
-### `channel.on(event, callback)`
+### `channel.on(event, callback): () => void`
 
-注册事件监听。
+注册事件监听。返回一个取消函数，调用后移除该监听器。
 
-### `channel.once(event, callback)`
+> 在 `close()` 之后调用 `on` 会触发 `onError`，并返回一个空操作函数。
 
-注册一次性监听器，首次触发后会自动移除。
+### `channel.once(event, callback): () => void`
+
+注册一次性监听器，首次触发后会自动移除。返回一个取消函数，可在触发前主动取消。
+
+> 在 `close()` 之后调用 `once` 会触发 `onError`，并返回一个空操作函数。
 
 ### `channel.emit(event, payload): boolean`
 
@@ -120,6 +129,10 @@ channel.close(); // 清空监听并关闭底层通道
 ### `channel.clear()`
 
 清空当前实例的所有事件监听器。
+
+### `channel.isClosed: boolean`
+
+在 `close()` 调用后返回 `true`。
 
 ### `channel.close()`
 

@@ -219,6 +219,44 @@ describe('WebpageChannel', () => {
 
   // --- on / onMessage (incoming) ---
 
+  it('should call onError and return no-op when on is called after close', () => {
+    const onError = vi.fn();
+    const adapter = new MockAdapter();
+    const channel = new WebpageChannel<TestEvents>(
+      'test-channel',
+      { onError },
+      adapter
+    );
+
+    channel.close();
+    const listener = vi.fn();
+    const unsubscribe = channel.on('ping', listener);
+
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError.mock.calls[0][0].message).toBe('Channel is closed');
+    expect(unsubscribe).toBeTypeOf('function');
+    expect(() => unsubscribe()).not.toThrow();
+  });
+
+  it('should call onError and return no-op when once is called after close', () => {
+    const onError = vi.fn();
+    const adapter = new MockAdapter();
+    const channel = new WebpageChannel<TestEvents>(
+      'test-channel',
+      { onError },
+      adapter
+    );
+
+    channel.close();
+    const listener = vi.fn();
+    const unsubscribe = channel.once('ping', listener);
+
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError.mock.calls[0][0].message).toBe('Channel is closed');
+    expect(unsubscribe).toBeTypeOf('function');
+    expect(() => unsubscribe()).not.toThrow();
+  });
+
   it('should dispatch incoming message to the correct event listeners', () => {
     const adapter = new MockAdapter();
     const channel = new WebpageChannel<TestEvents>(
@@ -634,6 +672,19 @@ describe('WebpageChannel', () => {
   });
 
   // --- close ---
+
+  it('isClosed should return false before close and true after', () => {
+    const adapter = new MockAdapter();
+    const channel = new WebpageChannel<TestEvents>(
+      'test-channel',
+      undefined,
+      adapter
+    );
+
+    expect(channel.isClosed).toBe(false);
+    channel.close();
+    expect(channel.isClosed).toBe(true);
+  });
 
   it('should clear listeners and close adapter on close', () => {
     const adapter = new MockAdapter();

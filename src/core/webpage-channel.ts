@@ -60,7 +60,6 @@ export default class WebpageChannel<
         this.onError?.(error);
       }
     });
-
     this.onError = options?.onError;
     this.onMessageError = options?.onMessageError;
     this.adapter.onMessageError((e) => {
@@ -68,7 +67,6 @@ export default class WebpageChannel<
 
       this.onMessageError(e);
     });
-
     this.serializeMessage = options?.serializeMessage ?? JSON.stringify;
     this.deserializeMessage = options?.deserializeMessage ?? JSON.parse;
 
@@ -76,10 +74,18 @@ export default class WebpageChannel<
   }
 
   on<K extends keyof T>(event: K, callback: T[K]): () => void {
+    if (!this.adapter) {
+      this.onError?.(new Error('Channel is closed'));
+      return () => {};
+    }
     return this.eventBus.on(event, callback);
   }
 
   once<K extends keyof T>(event: K, callback: T[K]): () => void {
+    if (!this.adapter) {
+      this.onError?.(new Error('Channel is closed'));
+      return () => {};
+    }
     return this.eventBus.once(event, callback);
   }
 
@@ -122,7 +128,7 @@ export default class WebpageChannel<
 
     try {
       const message = this.serializeMessage(data);
-      this.adapter?.postMessage(message);
+      this.adapter.postMessage(message);
       return true;
     } catch (e: unknown) {
       const error = e instanceof Error ? e : new Error(String(e));
@@ -157,5 +163,9 @@ export default class WebpageChannel<
     };
 
     this.adapter?.onMessage(callback);
+  }
+
+  get isClosed(): boolean {
+    return this.adapter === null;
   }
 }

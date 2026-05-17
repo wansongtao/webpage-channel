@@ -71,6 +71,9 @@ export default class EventBus<T extends EventMap> {
     if (idx !== -1) {
       fns.splice(idx, 1);
     }
+    if (fns.length === 0) {
+      delete this.listeners[event];
+    }
   }
 
   clear() {

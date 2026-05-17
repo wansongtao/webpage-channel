@@ -13,22 +13,23 @@ export default class EventBus<T extends EventMap> {
     this.onListenerError = options?.onListenerError;
   }
 
-  on<K extends keyof T>(event: K, callback: T[K]) {
+  on<K extends keyof T>(event: K, callback: T[K]): () => void {
     if (!this.listeners[event]) {
       this.listeners[event] = [];
     }
 
     this.listeners[event]!.push(callback);
+    return () => this.off(event, callback);
   }
 
-  once<K extends keyof T>(event: K, callback: T[K]) {
+  once<K extends keyof T>(event: K, callback: T[K]): () => void {
     const onceCallback = ((args: Parameters<T[K]>[0]) => {
       this.off(event, onceCallback as T[K]);
       callback(args);
     }) as WrappedListener<T[K]>;
 
     onceCallback[ORIGINAL_LISTENER] = callback;
-    this.on(event, onceCallback as T[K]);
+    return this.on(event, onceCallback as T[K]);
   }
 
   emit<K extends keyof T>(

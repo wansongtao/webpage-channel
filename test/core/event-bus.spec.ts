@@ -89,6 +89,28 @@ describe('EventBus', () => {
     expect(listener).toHaveBeenCalledWith({ value: 6 });
   });
 
+  it('should return an unsubscribe function from on that removes the listener', () => {
+    const bus = new EventBus<TestEvents>();
+    const listener = vi.fn();
+
+    const unsubscribe = bus.on('ping', listener);
+    unsubscribe();
+    bus.emit('ping', { value: 9 });
+
+    expect(listener).not.toHaveBeenCalled();
+  });
+
+  it('should return an unsubscribe function from once that removes the listener before it fires', () => {
+    const bus = new EventBus<TestEvents>();
+    const listener = vi.fn();
+
+    const unsubscribe = bus.once('ping', listener);
+    unsubscribe();
+    bus.emit('ping', { value: 10 });
+
+    expect(listener).not.toHaveBeenCalled();
+  });
+
   it('should support off with original listener registered by once', () => {
     const bus = new EventBus<TestEvents>();
     const listener = vi.fn();

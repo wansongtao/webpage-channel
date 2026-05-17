@@ -60,7 +60,6 @@ export default class WebpageChannel<
         this.onError?.(error);
       }
     });
-    this.onMessage();
 
     this.onError = options?.onError;
     this.onMessageError = options?.onMessageError;
@@ -72,14 +71,16 @@ export default class WebpageChannel<
 
     this.serializeMessage = options?.serializeMessage ?? JSON.stringify;
     this.deserializeMessage = options?.deserializeMessage ?? JSON.parse;
+
+    this.onMessage();
   }
 
-  on<K extends keyof T>(event: K, callback: T[K]) {
-    this.eventBus.on(event, callback);
+  on<K extends keyof T>(event: K, callback: T[K]): () => void {
+    return this.eventBus.on(event, callback);
   }
 
-  once<K extends keyof T>(event: K, callback: T[K]) {
-    this.eventBus.once(event, callback);
+  once<K extends keyof T>(event: K, callback: T[K]): () => void {
+    return this.eventBus.once(event, callback);
   }
 
   emit<K extends keyof T>(

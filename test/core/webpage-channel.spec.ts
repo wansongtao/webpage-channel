@@ -243,6 +243,46 @@ describe('WebpageChannel', () => {
     channel.close();
   });
 
+  it('should return an unsubscribe function from on that removes the listener', () => {
+    const adapter = new MockAdapter();
+    const channel = new WebpageChannel<TestEvents>(
+      'test-channel',
+      undefined,
+      adapter
+    );
+
+    const listener = vi.fn();
+    const unsubscribe = channel.on('ping', listener);
+    unsubscribe();
+
+    adapter.emitIncoming(
+      JSON.stringify({ channelName: 'test-channel', event: 'ping', data: { value: 11 } })
+    );
+
+    expect(listener).not.toHaveBeenCalled();
+    channel.close();
+  });
+
+  it('should return an unsubscribe function from once that removes the listener before it fires', () => {
+    const adapter = new MockAdapter();
+    const channel = new WebpageChannel<TestEvents>(
+      'test-channel',
+      undefined,
+      adapter
+    );
+
+    const listener = vi.fn();
+    const unsubscribe = channel.once('ping', listener);
+    unsubscribe();
+
+    adapter.emitIncoming(
+      JSON.stringify({ channelName: 'test-channel', event: 'ping', data: { value: 12 } })
+    );
+
+    expect(listener).not.toHaveBeenCalled();
+    channel.close();
+  });
+
   it('should call once listener only once for incoming messages', () => {
     const adapter = new MockAdapter();
     const channel = new WebpageChannel<TestEvents>(

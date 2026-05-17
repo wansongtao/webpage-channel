@@ -401,6 +401,21 @@ Notes:
 - Avoid using `*` as `targetOrigin` in production.
 - `PostMessageAdapter` validates both `e.origin === targetOrigin` and `e.source === targetWindow`.
 - Parent and child should keep the same event names and payload contract.
+- **Security**: this library is a transport layer and does not validate payload structure at runtime. When communicating with third-party or untrusted windows (especially with `targetOrigin: '*'`), validate received payloads in your application before using them. The `deserializeMessage` option is a convenient integration point for schema validators such as [Zod](https://zod.dev):
+
+```ts
+import { z } from 'zod';
+
+const schema = z.object({
+	channelName: z.string(),
+	event: z.string().optional(),
+	data: z.unknown(),
+});
+
+const channel = new WebpageChannel('my-channel', {
+	deserializeMessage: (raw) => schema.parse(JSON.parse(raw)),
+});
+```
 
 ### Custom Adapter Example
 

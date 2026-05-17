@@ -403,6 +403,21 @@ channel.on('auth:token', (payload) => {
 - 生产环境请避免使用 `*` 作为 `targetOrigin`。
 - `PostMessageAdapter` 内部会同时校验 `e.origin === targetOrigin` 和 `e.source === targetWindow`。
 - 父子页面建议保持一致的事件名与数据结构定义。
+- **安全提示**：本库是传输层，不对 payload 结构做运行时校验。当与第三方或不可信窗口通信时（尤其是 `targetOrigin: '*'` 场景），建议在业务层对接收到的数据进行校验后再使用。`deserializeMessage` 选项是接入 [Zod](https://zod.dev) 等 Schema 校验器的便捷入口：
+
+```ts
+import { z } from 'zod';
+
+const schema = z.object({
+	channelName: z.string(),
+	event: z.string().optional(),
+	data: z.unknown(),
+});
+
+const channel = new WebpageChannel('my-channel', {
+	deserializeMessage: (raw) => schema.parse(JSON.parse(raw)),
+});
+```
 
 ### 自定义适配器示例
 

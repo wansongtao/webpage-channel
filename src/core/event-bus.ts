@@ -9,10 +9,21 @@ export default class EventBus<T extends EventMap> {
   private listeners: Partial<{ [K in keyof T]: T[K][] }> = {};
   private onListenerError?: (error: Error) => void;
 
+  /**
+   * Creates a new EventBus instance.
+   * @param options - Optional configuration.
+   * @param options.onListenerError - Callback invoked when a listener throws an error during event dispatch.
+   */
   constructor(options?: { onListenerError?: (error: Error) => void }) {
     this.onListenerError = options?.onListenerError;
   }
 
+  /**
+   * Registers a persistent listener for the specified event.
+   * @param event - The event name to listen for.
+   * @param callback - The callback function invoked when the event is emitted.
+   * @returns A function that removes this listener when called.
+   */
   on<K extends keyof T>(event: K, callback: T[K]): () => void {
     if (!this.listeners[event]) {
       this.listeners[event] = [];
@@ -22,6 +33,13 @@ export default class EventBus<T extends EventMap> {
     return () => this.off(event, callback);
   }
 
+  /**
+   * Registers a one-time listener for the specified event.
+   * The listener is automatically removed after being invoked once.
+   * @param event - The event name to listen for.
+   * @param callback - The callback function invoked when the event is emitted.
+   * @returns A function that removes this listener when called.
+   */
   once<K extends keyof T>(event: K, callback: T[K]): () => void {
     const onceCallback = ((args: Parameters<T[K]>[0]) => {
       this.off(event, onceCallback as T[K]);
@@ -32,6 +50,12 @@ export default class EventBus<T extends EventMap> {
     return this.on(event, onceCallback as T[K]);
   }
 
+  /**
+   * Emits an event, invoking all registered listeners for it.
+   * If a listener throws, the error is caught and forwarded to `onListenerError` if provided.
+   * @param event - The event name to emit.
+   * @param args - The argument to pass to each listener (omitted if the listener takes no arguments).
+   */
   emit<K extends keyof T>(
     event: K,
     ...[args]: Parameters<T[K]>[0] extends undefined
@@ -53,6 +77,13 @@ export default class EventBus<T extends EventMap> {
     });
   }
 
+  /**
+   * Removes a listener for the specified event.
+   * If no listener is provided, all listeners for the event are removed.
+   * Also correctly removes listeners registered via `once`.
+   * @param event - The event name whose listener(s) should be removed.
+   * @param listener - The specific listener to remove. Omit to remove all listeners for the event.
+   */
   off<K extends keyof T>(event: K, listener?: T[K]) {
     if (!listener) {
       delete this.listeners[event];
@@ -76,6 +107,9 @@ export default class EventBus<T extends EventMap> {
     }
   }
 
+  /**
+   * Removes all registered listeners for all events.
+   */
   clear() {
     this.listeners = {};
   }

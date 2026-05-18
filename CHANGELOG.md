@@ -6,6 +6,18 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+## [1.2.3] - 2026-05-18
+
+### Changed
+
+- All core classes (`WebpageChannel`, `EventBus`, `BroadcastChannelAdapter`, `LocalStorageAdapter`, `PostMessageAdapter`, `WebpageChannelRpc`, `ChannelError`) are now exported as named exports instead of `export default`. The package entry point (`src/index.ts`) has been updated accordingly. This improves consistency, tree-shaking compatibility, and avoids `.default` access issues in CommonJS interop.
+
+### Documentation
+
+- Added full JSDoc comments to all public methods of `WebpageChannel`: `constructor`, `on()`, `once()`, `emit()`, `off()`, `clear()`, `close()`, `isClosed`, and private helpers `postMessage()`, `onMessage()`.
+- Added full JSDoc comments to all methods of `EventBus`: `constructor`, `on()`, `once()`, `emit()`, `off()`, `clear()`.
+- Added JSDoc comments to `createRpcChannel()`, documenting all parameters (`channelName`, `options.channel`, `options.rpc`, `adapter`) and the return value.
+
 ## [1.2.2] - 2026-05-17
 
 ### Added

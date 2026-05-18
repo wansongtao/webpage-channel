@@ -1,7 +1,7 @@
 import type { IWebpageChannelAdapter, RpcFn, RpcOptions } from 'src/types';
 
-import WebpageChannel from './webpage-channel';
-import WebpageChannelRpc from './webpage-channel-rpc';
+import { WebpageChannel } from './webpage-channel';
+import { WebpageChannelRpc } from './webpage-channel-rpc';
 
 type ChannelOptions = ConstructorParameters<typeof WebpageChannel>[1];
 

@@ -9,7 +9,7 @@ import type {
   SerializedError
 } from 'src/types';
 
-import WebpageChannel from './webpage-channel';
+import { WebpageChannel } from './webpage-channel';
 import { generateLocalId } from 'src/utils';
 import { ChannelError } from './channel-error';
 
@@ -38,7 +38,7 @@ import { ChannelError } from './channel-error';
  * const [err, result] = await rpcB.request('add', { a: 1, b: 2 });
  * ```
  */
-export default class WebpageChannelRpc<T extends Record<string, RpcFn>> {
+export class WebpageChannelRpc<T extends Record<string, RpcFn>> {
   private channel: WebpageChannel<any>;
   private pendingRequests = new Map<string, PendingRequest>();
   private registeredHandlerEvents = new Set<PropertyKey>();

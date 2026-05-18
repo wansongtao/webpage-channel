@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import EventBus from '../../src/core/event-bus';
+import { EventBus } from '../../src/core/event-bus';
 
 type TestEvents = {
   ping: (payload: { value: number }) => void;

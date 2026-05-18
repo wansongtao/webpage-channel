@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import * as utils from '../../src/utils';
-import PostMessageAdapter from '../../src/core/postmessage-adapter';
+import { PostMessageAdapter } from '../../src/core/postmessage-adapter';
 
 describe('PostMessageAdapter', () => {
   beforeEach(() => {
@@ -45,7 +45,10 @@ describe('PostMessageAdapter', () => {
 
     adapter.postMessage('hello');
 
-    expect(mockWindow.postMessage).toHaveBeenCalledWith('hello', 'https://target.test');
+    expect(mockWindow.postMessage).toHaveBeenCalledWith(
+      'hello',
+      'https://target.test'
+    );
     adapter.close();
   });
 
@@ -105,7 +108,10 @@ describe('PostMessageAdapter', () => {
     adapter.onMessageError(() => {});
     adapter.onMessageError(() => {});
 
-    expect(removeSpy).toHaveBeenCalledWith('messageerror', expect.any(Function));
+    expect(removeSpy).toHaveBeenCalledWith(
+      'messageerror',
+      expect.any(Function)
+    );
 
     adapter.close();
     removeSpy.mockRestore();

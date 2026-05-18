@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import * as utils from '../../src/utils';
-import BroadcastChannelAdapter from '../../src/core/broadcast-channel-adapter';
+import { BroadcastChannelAdapter } from '../../src/core/broadcast-channel-adapter';
 
 describe('BroadcastChannelAdapter', () => {
   beforeEach(() => {

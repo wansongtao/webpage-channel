@@ -5,14 +5,12 @@ import type {
   IWebpageChannelAdapter
 } from '../types';
 
-import BroadcastChannelAdapter from './broadcast-channel-adapter';
-import LocalStorageAdapter from './localstorage-adapter';
-import EventBus from './event-bus';
+import { BroadcastChannelAdapter } from './broadcast-channel-adapter';
+import { LocalStorageAdapter } from './localstorage-adapter';
+import { EventBus } from './event-bus';
 import { isSupportBroadcastChannel, isSupportLocalStorage } from '../utils';
 
-export default class WebpageChannel<
-  T extends Record<string, (args: any) => void>
-> {
+export class WebpageChannel<T extends Record<string, (args: any) => void>> {
   private channelName: string;
   private eventBus: EventBus<T>;
   private adapter: IWebpageChannelAdapter | null;

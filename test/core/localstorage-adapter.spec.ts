@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import * as utils from '../../src/utils';
-import LocalStorageAdapter from '../../src/core/localstorage-adapter';
+import { LocalStorageAdapter } from '../../src/core/localstorage-adapter';
 
 describe('LocalStorageAdapter', () => {
   const CHANNEL = 'test-channel';
@@ -47,10 +47,16 @@ describe('LocalStorageAdapter', () => {
     adapter.onMessage(first);
     adapter.onMessage(second);
 
-    expect(removeEventListenerSpy).toHaveBeenCalledWith('storage', expect.any(Function));
+    expect(removeEventListenerSpy).toHaveBeenCalledWith(
+      'storage',
+      expect.any(Function)
+    );
 
     const payload = JSON.stringify({ message: 'hello', timestamp: 'ts' });
-    const event = new StorageEvent('storage', { key: STORAGE_KEY, newValue: payload });
+    const event = new StorageEvent('storage', {
+      key: STORAGE_KEY,
+      newValue: payload
+    });
     window.dispatchEvent(event);
 
     expect(second).toHaveBeenCalledOnce();
@@ -78,8 +84,14 @@ describe('LocalStorageAdapter', () => {
     const callback = vi.fn();
     adapter.onMessage(callback);
 
-    const payload = JSON.stringify({ message: 'from-other-tab', timestamp: Date.now() });
-    const event = new StorageEvent('storage', { key: STORAGE_KEY, newValue: payload });
+    const payload = JSON.stringify({
+      message: 'from-other-tab',
+      timestamp: Date.now()
+    });
+    const event = new StorageEvent('storage', {
+      key: STORAGE_KEY,
+      newValue: payload
+    });
     window.dispatchEvent(event);
 
     expect(callback).toHaveBeenCalledOnce();
@@ -92,7 +104,10 @@ describe('LocalStorageAdapter', () => {
     adapter.onMessage(callback);
 
     const payload = JSON.stringify({ message: 'noise', timestamp: Date.now() });
-    const event = new StorageEvent('storage', { key: 'other-key', newValue: payload });
+    const event = new StorageEvent('storage', {
+      key: 'other-key',
+      newValue: payload
+    });
     window.dispatchEvent(event);
 
     expect(callback).not.toHaveBeenCalled();
@@ -103,7 +118,10 @@ describe('LocalStorageAdapter', () => {
     const callback = vi.fn();
     adapter.onMessage(callback);
 
-    const event = new StorageEvent('storage', { key: STORAGE_KEY, newValue: null });
+    const event = new StorageEvent('storage', {
+      key: STORAGE_KEY,
+      newValue: null
+    });
     window.dispatchEvent(event);
 
     expect(callback).not.toHaveBeenCalled();
@@ -114,7 +132,10 @@ describe('LocalStorageAdapter', () => {
     const callback = vi.fn();
     adapter.onMessage(callback);
 
-    const event = new StorageEvent('storage', { key: STORAGE_KEY, newValue: 'not-json' });
+    const event = new StorageEvent('storage', {
+      key: STORAGE_KEY,
+      newValue: 'not-json'
+    });
     expect(() => window.dispatchEvent(event)).not.toThrow();
     expect(callback).not.toHaveBeenCalled();
   });
@@ -126,8 +147,14 @@ describe('LocalStorageAdapter', () => {
 
     adapter.close();
 
-    const payload = JSON.stringify({ message: 'after-close', timestamp: Date.now() });
-    const event = new StorageEvent('storage', { key: STORAGE_KEY, newValue: payload });
+    const payload = JSON.stringify({
+      message: 'after-close',
+      timestamp: Date.now()
+    });
+    const event = new StorageEvent('storage', {
+      key: STORAGE_KEY,
+      newValue: payload
+    });
     window.dispatchEvent(event);
 
     expect(callback).not.toHaveBeenCalled();

@@ -1,7 +1,7 @@
 import type { IWebpageChannelAdapter } from '../types';
 import { isSupportPostMessage } from '../utils';
 
-export default class PostMessageAdapter implements IWebpageChannelAdapter {
+export class PostMessageAdapter implements IWebpageChannelAdapter {
   private targetWindow: Window;
   private targetOrigin: string;
   private messageHandler: ((e: MessageEvent) => void) | null = null;

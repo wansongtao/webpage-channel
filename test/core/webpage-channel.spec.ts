@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import * as utils from '../../src/utils';
-import WebpageChannel from '../../src/core/webpage-channel';
+import { WebpageChannel } from '../../src/core/webpage-channel';
 import type { IWebpageChannelAdapter } from '../../src/types';
 
 type TestEvents = {
@@ -65,7 +65,9 @@ describe('WebpageChannel', () => {
       vi.spyOn(utils, 'isSupportBroadcastChannel').mockReturnValue(false);
       vi.spyOn(utils, 'isSupportLocalStorage').mockReturnValue(false);
 
-      expect(() => new WebpageChannel<TestEvents>('no-support-channel')).toThrow(
+      expect(
+        () => new WebpageChannel<TestEvents>('no-support-channel')
+      ).toThrow(
         'Neither BroadcastChannel nor localStorage is supported in this environment.'
       );
     });
@@ -76,7 +78,14 @@ describe('WebpageChannel', () => {
 
       const adapter = new MockAdapter();
       // Passing explicit adapter should skip env checks entirely
-      expect(() => new WebpageChannel<TestEvents>('custom-adapter-channel', undefined, adapter)).not.toThrow();
+      expect(
+        () =>
+          new WebpageChannel<TestEvents>(
+            'custom-adapter-channel',
+            undefined,
+            adapter
+          )
+      ).not.toThrow();
     });
   });
 
@@ -97,7 +106,11 @@ describe('WebpageChannel', () => {
     const listener = vi.fn();
     channel.on('ping', listener);
     adapter.emitIncoming(
-      JSON.stringify({ channelName: 'test-channel', event: 'ping', data: { value: 2 } })
+      JSON.stringify({
+        channelName: 'test-channel',
+        event: 'ping',
+        data: { value: 2 }
+      })
     );
     expect(deserialize).toHaveBeenCalledTimes(1);
     expect(listener).toHaveBeenCalledWith({ value: 2 });
@@ -114,7 +127,9 @@ describe('WebpageChannel', () => {
     );
 
     // Should not throw - the internal handler has `if (!this.onMessageError) return;`
-    expect(() => adapter.emitMessageError(new MessageEvent('messageerror'))).not.toThrow();
+    expect(() =>
+      adapter.emitMessageError(new MessageEvent('messageerror'))
+    ).not.toThrow();
     channel.close();
   });
 
@@ -181,7 +196,9 @@ describe('WebpageChannel', () => {
       'test-channel',
       {
         onError,
-        serializeMessage: () => { throw new Error('serialize failed'); }
+        serializeMessage: () => {
+          throw new Error('serialize failed');
+        }
       },
       adapter
     );
@@ -203,7 +220,9 @@ describe('WebpageChannel', () => {
       'test-channel',
       {
         onError,
-        serializeMessage: () => { throw 'string error'; }
+        serializeMessage: () => {
+          throw 'string error';
+        }
       },
       adapter
     );
@@ -272,7 +291,11 @@ describe('WebpageChannel', () => {
     channel.on('pong', pongListener);
 
     adapter.emitIncoming(
-      JSON.stringify({ channelName: 'test-channel', event: 'ping', data: { value: 10 } })
+      JSON.stringify({
+        channelName: 'test-channel',
+        event: 'ping',
+        data: { value: 10 }
+      })
     );
 
     expect(pingListener).toHaveBeenCalledWith({ value: 10 });
@@ -294,7 +317,11 @@ describe('WebpageChannel', () => {
     unsubscribe();
 
     adapter.emitIncoming(
-      JSON.stringify({ channelName: 'test-channel', event: 'ping', data: { value: 11 } })
+      JSON.stringify({
+        channelName: 'test-channel',
+        event: 'ping',
+        data: { value: 11 }
+      })
     );
 
     expect(listener).not.toHaveBeenCalled();
@@ -314,7 +341,11 @@ describe('WebpageChannel', () => {
     unsubscribe();
 
     adapter.emitIncoming(
-      JSON.stringify({ channelName: 'test-channel', event: 'ping', data: { value: 12 } })
+      JSON.stringify({
+        channelName: 'test-channel',
+        event: 'ping',
+        data: { value: 12 }
+      })
     );
 
     expect(listener).not.toHaveBeenCalled();
@@ -333,10 +364,18 @@ describe('WebpageChannel', () => {
     channel.once('ping', listener);
 
     adapter.emitIncoming(
-      JSON.stringify({ channelName: 'test-channel', event: 'ping', data: { value: 11 } })
+      JSON.stringify({
+        channelName: 'test-channel',
+        event: 'ping',
+        data: { value: 11 }
+      })
     );
     adapter.emitIncoming(
-      JSON.stringify({ channelName: 'test-channel', event: 'ping', data: { value: 12 } })
+      JSON.stringify({
+        channelName: 'test-channel',
+        event: 'ping',
+        data: { value: 12 }
+      })
     );
 
     expect(listener).toHaveBeenCalledTimes(1);
@@ -357,7 +396,11 @@ describe('WebpageChannel', () => {
     channel.on('ping', listener);
 
     adapter.emitIncoming(
-      JSON.stringify({ channelName: 'other-channel', event: 'ping', data: { value: 1 } })
+      JSON.stringify({
+        channelName: 'other-channel',
+        event: 'ping',
+        data: { value: 1 }
+      })
     );
 
     expect(listener).not.toHaveBeenCalled();
@@ -375,9 +418,7 @@ describe('WebpageChannel', () => {
     const listener = vi.fn();
     channel.on('ping', listener);
 
-    adapter.emitIncoming(
-      JSON.stringify({ channelName: 'test-channel' })
-    );
+    adapter.emitIncoming(JSON.stringify({ channelName: 'test-channel' }));
 
     expect(listener).not.toHaveBeenCalled();
     channel.close();
@@ -412,7 +453,11 @@ describe('WebpageChannel', () => {
 
     // No listeners registered
     adapter.emitIncoming(
-      JSON.stringify({ channelName: 'test-channel', event: 'ping', data: { value: 1 } })
+      JSON.stringify({
+        channelName: 'test-channel',
+        event: 'ping',
+        data: { value: 1 }
+      })
     );
 
     // Should not throw
@@ -443,7 +488,9 @@ describe('WebpageChannel', () => {
       'test-channel',
       {
         onError,
-        deserializeMessage: () => { throw 'parse string error'; }
+        deserializeMessage: () => {
+          throw 'parse string error';
+        }
       },
       adapter
     );
@@ -490,7 +537,11 @@ describe('WebpageChannel', () => {
     channel.on('ping', normalListener);
 
     adapter.emitIncoming(
-      JSON.stringify({ channelName: 'test-channel', event: 'ping', data: { value: 42 } })
+      JSON.stringify({
+        channelName: 'test-channel',
+        event: 'ping',
+        data: { value: 42 }
+      })
     );
 
     expect(throwingListener).toHaveBeenCalledTimes(1);
@@ -514,7 +565,11 @@ describe('WebpageChannel', () => {
     });
 
     adapter.emitIncoming(
-      JSON.stringify({ channelName: 'test-channel', event: 'ping', data: { value: 1 } })
+      JSON.stringify({
+        channelName: 'test-channel',
+        event: 'ping',
+        data: { value: 1 }
+      })
     );
 
     expect(onError).toHaveBeenCalledTimes(1);
@@ -537,7 +592,11 @@ describe('WebpageChannel', () => {
 
     expect(() =>
       adapter.emitIncoming(
-        JSON.stringify({ channelName: 'test-channel', event: 'ping', data: { value: 1 } })
+        JSON.stringify({
+          channelName: 'test-channel',
+          event: 'ping',
+          data: { value: 1 }
+        })
       )
     ).not.toThrow();
 
@@ -582,7 +641,11 @@ describe('WebpageChannel', () => {
     channel.off('ping', listenerA);
 
     adapter.emitIncoming(
-      JSON.stringify({ channelName: 'test-channel', event: 'ping', data: { value: 100 } })
+      JSON.stringify({
+        channelName: 'test-channel',
+        event: 'ping',
+        data: { value: 100 }
+      })
     );
 
     expect(listenerA).not.toHaveBeenCalled();
@@ -606,7 +669,11 @@ describe('WebpageChannel', () => {
     channel.off('ping');
 
     adapter.emitIncoming(
-      JSON.stringify({ channelName: 'test-channel', event: 'ping', data: { value: 200 } })
+      JSON.stringify({
+        channelName: 'test-channel',
+        event: 'ping',
+        data: { value: 200 }
+      })
     );
 
     expect(listenerA).not.toHaveBeenCalled();
@@ -628,7 +695,11 @@ describe('WebpageChannel', () => {
     channel.off('ping', neverAddedListener);
 
     adapter.emitIncoming(
-      JSON.stringify({ channelName: 'test-channel', event: 'ping', data: { value: 400 } })
+      JSON.stringify({
+        channelName: 'test-channel',
+        event: 'ping',
+        data: { value: 400 }
+      })
     );
 
     expect(activeListener).toHaveBeenCalledTimes(1);
@@ -665,7 +736,11 @@ describe('WebpageChannel', () => {
     channel.clear();
 
     adapter.emitIncoming(
-      JSON.stringify({ channelName: 'test-channel', event: 'ping', data: { value: 300 } })
+      JSON.stringify({
+        channelName: 'test-channel',
+        event: 'ping',
+        data: { value: 300 }
+      })
     );
 
     expect(listener).not.toHaveBeenCalled();

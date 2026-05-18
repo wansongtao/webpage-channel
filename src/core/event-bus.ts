@@ -5,7 +5,7 @@ type WrappedListener<F extends (...args: any[]) => any> = F & {
   [ORIGINAL_LISTENER]?: F;
 };
 
-export default class EventBus<T extends EventMap> {
+export class EventBus<T extends EventMap> {
   private listeners: Partial<{ [K in keyof T]: T[K][] }> = {};
   private onListenerError?: (error: Error) => void;
 

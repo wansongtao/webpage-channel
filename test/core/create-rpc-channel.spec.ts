@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { IWebpageChannelAdapter } from '../../src/types';
-import WebpageChannelRpc from '../../src/core/webpage-channel-rpc';
+import { WebpageChannelRpc } from '../../src/core/webpage-channel-rpc';
 import { createRpcChannel } from '../../src/core/create-rpc-channel';
 
 type TestApi = {
@@ -66,13 +66,17 @@ describe('createRpcChannel', () => {
     const serverAdapter: IWebpageChannelAdapter = {
       postMessage: vi.fn((msg: string) => clientHandler?.(msg)),
       close: vi.fn(),
-      onMessage: (cb) => { serverHandler = cb; },
+      onMessage: (cb) => {
+        serverHandler = cb;
+      },
       onMessageError: () => {}
     };
     const clientAdapter: IWebpageChannelAdapter = {
       postMessage: vi.fn((msg: string) => serverHandler?.(msg)),
       close: vi.fn(),
-      onMessage: (cb) => { clientHandler = cb; },
+      onMessage: (cb) => {
+        clientHandler = cb;
+      },
       onMessageError: () => {}
     };
 

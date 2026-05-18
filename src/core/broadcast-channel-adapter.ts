@@ -1,7 +1,8 @@
 import type { IWebpageChannelAdapter } from '../types';
+
 import { isSupportBroadcastChannel } from '../utils';
 
-export default class BroadcastChannelAdapter implements IWebpageChannelAdapter {
+export class BroadcastChannelAdapter implements IWebpageChannelAdapter {
   private channel: BroadcastChannel;
 
   constructor(channelName: string) {

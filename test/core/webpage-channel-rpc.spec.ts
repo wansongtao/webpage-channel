@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { IWebpageChannelAdapter } from '../../src/types';
 import { ChannelError } from '../../src/core/channel-error';
-import WebpageChannel from '../../src/core/webpage-channel';
-import WebpageChannelRpc from '../../src/core/webpage-channel-rpc';
+import { WebpageChannel } from '../../src/core/webpage-channel';
+import { WebpageChannelRpc } from '../../src/core/webpage-channel-rpc';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -84,7 +84,10 @@ describe('WebpageChannelRpc', () => {
 
     it('should accept custom timeout and generateUniqueId options', () => {
       const genId = vi.fn(() => 'fixed-id');
-      const rpc = new WebpageChannelRpc(clientChannel, { timeout: 1000, generateUniqueId: genId });
+      const rpc = new WebpageChannelRpc(clientChannel, {
+        timeout: 1000,
+        generateUniqueId: genId
+      });
       expect(rpc).toBeDefined();
     });
   });
@@ -166,7 +169,11 @@ describe('WebpageChannelRpc', () => {
 
     it('should return an error immediately when emit fails', async () => {
       const [adapterA] = createLinkedPair();
-      const closedChannel = new WebpageChannel(CHANNEL_NAME, undefined, adapterA);
+      const closedChannel = new WebpageChannel(
+        CHANNEL_NAME,
+        undefined,
+        adapterA
+      );
       const rpc = new WebpageChannelRpc(closedChannel);
       closedChannel.close();
 
@@ -179,7 +186,12 @@ describe('WebpageChannelRpc', () => {
       const controller = new AbortController();
       controller.abort();
 
-      const [err] = await client.request('add', { a: 1, b: 2 }, undefined, controller.signal);
+      const [err] = await client.request(
+        'add',
+        { a: 1, b: 2 },
+        undefined,
+        controller.signal
+      );
 
       expect(err).toBeInstanceOf(Error);
       expect((err as Error).message).toMatch(/aborted/i);
@@ -187,7 +199,12 @@ describe('WebpageChannelRpc', () => {
 
     it('should abort a pending request when signal is aborted', async () => {
       const controller = new AbortController();
-      const promise = client.request('add', { a: 1, b: 2 }, 5000, controller.signal);
+      const promise = client.request(
+        'add',
+        { a: 1, b: 2 },
+        5000,
+        controller.signal
+      );
       controller.abort();
 
       const [err] = await promise;
@@ -198,7 +215,12 @@ describe('WebpageChannelRpc', () => {
 
     it('should return a ChannelError with AbortError name when signal is aborted with a reason', async () => {
       const controller = new AbortController();
-      const promise = client.request('add', { a: 1, b: 2 }, 5000, controller.signal);
+      const promise = client.request(
+        'add',
+        { a: 1, b: 2 },
+        5000,
+        controller.signal
+      );
       controller.abort(new TypeError('custom abort reason'));
 
       const [err] = await promise;
@@ -210,7 +232,12 @@ describe('WebpageChannelRpc', () => {
 
     it('should return a ChannelError with AbortError name when signal is aborted with a string reason', async () => {
       const controller = new AbortController();
-      const promise = client.request('add', { a: 1, b: 2 }, 5000, controller.signal);
+      const promise = client.request(
+        'add',
+        { a: 1, b: 2 },
+        5000,
+        controller.signal
+      );
       controller.abort('cancelled by user');
 
       const [err] = await promise;

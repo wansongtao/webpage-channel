@@ -7,7 +7,7 @@ interface IStorageMessage {
   timestamp: string;
 }
 
-export default class LocalStorageAdapter implements IWebpageChannelAdapter {
+export class LocalStorageAdapter implements IWebpageChannelAdapter {
   private storageKey: string;
   private storageHandler: ((e: StorageEvent) => void) | null = null;
 

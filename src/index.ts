@@ -1,10 +1,11 @@
-export { default as WebpageChannel } from './core/webpage-channel';
-export { ChannelError } from './core/channel-error';
-export type { ErrorName } from './core/channel-error';
-export { default as BroadcastChannelAdapter } from './core/broadcast-channel-adapter';
-export { default as LocalStorageAdapter } from './core/localstorage-adapter';
-export { default as PostMessageAdapter } from './core/postmessage-adapter';
-export { default as EventBus } from './core/event-bus';
-export { default as WebpageChannelRpc } from './core/webpage-channel-rpc';
+export { WebpageChannel } from './core/webpage-channel';
+export { BroadcastChannelAdapter } from './core/broadcast-channel-adapter';
+export { LocalStorageAdapter } from './core/localstorage-adapter';
+export { PostMessageAdapter } from './core/postmessage-adapter';
+export { EventBus } from './core/event-bus';
+export { WebpageChannelRpc } from './core/webpage-channel-rpc';
 export { createRpcChannel } from './core/create-rpc-channel';
+export { ChannelError } from './core/channel-error';
+
+export type { ErrorName } from './core/channel-error';
 export * from './types/index.d';

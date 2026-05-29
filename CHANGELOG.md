@@ -6,6 +6,17 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+## [1.2.4] - 2026-05-29
+
+### Changed
+
+- Refactored `WebpageChannel` internal message and option typing by introducing `Message<T>` and `Options<T>`, improving type clarity and maintainability.
+- Simplified constructor option handling in `WebpageChannel` by centralizing defaults in `options` and merging optional handlers/serializers more explicitly.
+- Improved error handling flow in `WebpageChannel` so all close-state, serialization/deserialization, and adapter errors consistently use `options.onError`.
+- Optimized listener registration behavior:
+  - `EventBus` listener error forwarding is only wired when `onError` is provided.
+  - Adapter `messageerror` callback is only wired when `onMessageError` is provided.
+
 ## [1.2.3] - 2026-05-18
 
 ### Changed

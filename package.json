@@ -1,6 +1,6 @@
 {
   "name": "webpage-channel",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "description": "A lightweight library for cross-context communication between browser tabs, iframes, and web workers using broadcast channels and postMessage.",
   "type": "module",
   "main": "./dist/index.cjs",

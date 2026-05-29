@@ -10,19 +10,26 @@ import { LocalStorageAdapter } from './localstorage-adapter';
 import { EventBus } from './event-bus';
 import { isSupportBroadcastChannel, isSupportLocalStorage } from '../utils';
 
+type Message<T extends Record<string, any>> = IChannelData<
+  Parameters<T[keyof T]>,
+  keyof T
+>;
+
+interface Options<T extends Record<string, any>> {
+  onError?: IErrorEvent;
+  onMessageError?: IMessageErrorEvent;
+  serializeMessage: (data: Message<T>) => string;
+  deserializeMessage: (data: string) => Message<T>;
+}
+
 export class WebpageChannel<T extends Record<string, (args: any) => void>> {
   private channelName: string;
   private eventBus: EventBus<T>;
   private adapter: IWebpageChannelAdapter | null;
-
-  onError?: IErrorEvent;
-  onMessageError?: IMessageErrorEvent;
-  serializeMessage: (
-    data: IChannelData<Parameters<T[keyof T]>, keyof T>
-  ) => string;
-  deserializeMessage: (
-    data: string
-  ) => IChannelData<Parameters<T[keyof T]>, keyof T>;
+  options: Options<T> = {
+    serializeMessage: JSON.stringify,
+    deserializeMessage: JSON.parse
+  };
 
   /**
    * Creates a new WebpageChannel instance.
@@ -39,16 +46,7 @@ export class WebpageChannel<T extends Record<string, (args: any) => void>> {
    */
   constructor(
     channelName: string,
-    options?: {
-      onError?: IErrorEvent;
-      onMessageError?: IMessageErrorEvent;
-      serializeMessage?: (
-        data: IChannelData<Parameters<T[keyof T]>, keyof T>
-      ) => string;
-      deserializeMessage?: (
-        data: string
-      ) => IChannelData<Parameters<T[keyof T]>, keyof T>;
-    },
+    options?: Partial<Options<T>>,
     adapter?: IWebpageChannelAdapter
   ) {
     if (!adapter) {
@@ -66,20 +64,33 @@ export class WebpageChannel<T extends Record<string, (args: any) => void>> {
     }
 
     this.channelName = channelName;
-    this.eventBus = new EventBus<T>({
-      onListenerError: (error) => {
-        this.onError?.(error);
-      }
-    });
-    this.onError = options?.onError;
-    this.onMessageError = options?.onMessageError;
-    this.adapter.onMessageError((e) => {
-      if (!this.onMessageError) return;
 
-      this.onMessageError(e);
-    });
-    this.serializeMessage = options?.serializeMessage ?? JSON.stringify;
-    this.deserializeMessage = options?.deserializeMessage ?? JSON.parse;
+    if (options?.onError) {
+      this.options.onError = options.onError;
+
+      this.eventBus = new EventBus<T>({
+        onListenerError: (error) => {
+          this.options.onError?.(error);
+        }
+      });
+    } else {
+      this.eventBus = new EventBus<T>();
+    }
+
+    if (options?.onMessageError) {
+      this.options.onMessageError = options?.onMessageError;
+
+      this.adapter.onMessageError((e) => {
+        this.options.onMessageError?.(e);
+      });
+    }
+
+    if (options?.serializeMessage) {
+      this.options.serializeMessage = options.serializeMessage;
+    }
+    if (options?.deserializeMessage) {
+      this.options.deserializeMessage = options.deserializeMessage;
+    }
 
     this.onMessage();
   }
@@ -93,7 +104,7 @@ export class WebpageChannel<T extends Record<string, (args: any) => void>> {
    */
   on<K extends keyof T>(event: K, callback: T[K]): () => void {
     if (!this.adapter) {
-      this.onError?.(new Error('Channel is closed'));
+      this.options.onError?.(new Error('Channel is closed'));
       return () => {};
     }
     return this.eventBus.on(event, callback);
@@ -108,7 +119,7 @@ export class WebpageChannel<T extends Record<string, (args: any) => void>> {
    */
   once<K extends keyof T>(event: K, callback: T[K]): () => void {
     if (!this.adapter) {
-      this.onError?.(new Error('Channel is closed'));
+      this.options.onError?.(new Error('Channel is closed'));
       return () => {};
     }
     return this.eventBus.once(event, callback);
@@ -127,7 +138,7 @@ export class WebpageChannel<T extends Record<string, (args: any) => void>> {
       : [Parameters<T[K]>[0]]
   ) {
     const channelName = this.channelName;
-    const msg: IChannelData<Parameters<T[K]>, K> = {
+    const msg: Message<T> = {
       channelName,
       event,
       data: args
@@ -168,20 +179,20 @@ export class WebpageChannel<T extends Record<string, (args: any) => void>> {
    * @param data - The structured channel data to send.
    * @returns `true` if the message was posted successfully, `false` otherwise.
    */
-  private postMessage(data: IChannelData<Parameters<T[keyof T]>, keyof T>) {
+  private postMessage(data: Message<T>) {
     if (!this.adapter) {
       const error = new Error('Adapter is not initialized');
-      this.onError?.(error);
+      this.options.onError?.(error);
       return false;
     }
 
     try {
-      const message = this.serializeMessage(data);
+      const message = this.options.serializeMessage(data);
       this.adapter.postMessage(message);
       return true;
     } catch (e: unknown) {
       const error = e instanceof Error ? e : new Error(String(e));
-      this.onError?.(error);
+      this.options.onError?.(error);
       return false;
     }
   }
@@ -192,13 +203,13 @@ export class WebpageChannel<T extends Record<string, (args: any) => void>> {
    */
   private onMessage() {
     const callback = (message: string) => {
-      let res: IChannelData<Parameters<T[keyof T]>, keyof T>;
+      let res: Message<T>;
 
       try {
-        res = this.deserializeMessage(message);
+        res = this.options.deserializeMessage(message);
       } catch (e: unknown) {
         const error = e instanceof Error ? e : new Error(String(e));
-        this.onError?.(error);
+        this.options.onError?.(error);
         return;
       }
 
